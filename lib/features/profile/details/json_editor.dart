@@ -211,6 +211,14 @@ const Map<String, Map<String, dynamic>> protocolSchemaValues = {
     "host_key": [""],
     "client_version": "SSH-2.0-OpenSSH_7.4p1",
   },
+  "anytls": {
+    "type": "anytls",
+    "tag": "anytls-out",
+    "server": "127.0.0.1",
+    "server_port": 1080,
+    "password": "8JCsPssfgS8tiRwiMlhARg==",
+    "tls": {"enabled": true},
+  },
 };
 const Map<String, Map<String, Map<String, dynamic>>> exampleSchemaValues = {
   "config.outbounds.transport": {
