@@ -62,8 +62,47 @@ jobs:
         run: echo "::set-output name=datetime::$(date +'%d.%H.%M')"
 
 
+  # windows-libs (in the Makefile) downloads a prebuilt hiddify-core.dll from upstream
+  # hiddify/hiddify-core's release, which predates this fork's AnyTLS/pcs/embedded-xray-core
+  # changes and drifts from the current libbox interface - same stale-binary problem that
+  # core-source-build/android-libs above already fixed for the other platforms. hiddify-core's own
+  # windows-amd64 Makefile target refuses to run on native Windows (`ifeq ($(OS),Windows_NT)`), so
+  # it's cross-compiled here from Linux with a mingw-w64 toolchain, mirroring hiddify-core's own
+  # CI, and handed to the windows job below as an artifact instead.
+  build-core-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: hiddify-core/go.mod
+          cache-dependency-path: hiddify-core/go.sum
+
+      - name: Setup MinGW
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+
+      - name: Build hiddify-core for Windows
+        run: make -C hiddify-core -f Makefile windows-amd64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hiddify-core-windows-amd64
+          path: |
+            hiddify-core/bin/hiddify-core.dll
+            hiddify-core/bin/HiddifyCli.exe
+            hiddify-core/bin/libcronet.dll
+          retention-days: 1
+          if-no-files-found: warn
+
   build:
-    needs: test
+    needs: [test, build-core-windows]
     permissions: write-all
     continue-on-error: true
 
@@ -282,7 +321,21 @@ jobs:
 
 
 
+      - name: Download Windows core artifact
+        if: matrix.platform == 'windows'
+        uses: actions/download-artifact@v4
+        with:
+          name: hiddify-core-windows-amd64
+          path: hiddify-core/bin
+
+      # windows-prepare would otherwise call windows-libs and overwrite the from-source DLL just
+      # downloaded above with upstream's prebuilt one - run common-prepare directly instead.
+      - name: Prepare for windows
+        if: matrix.platform == 'windows'
+        run: make common-prepare
+
       - name: Prepare for ${{ matrix.platform }}
+        if: matrix.platform != 'windows'
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
