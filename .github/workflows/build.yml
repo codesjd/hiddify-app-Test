@@ -252,7 +252,11 @@ jobs:
               (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}' | Set-Content "windows\packaging\msix\make_config.yaml"
             } else {
               Write-Host "WINDOWS_SIGNING_KEY not set - generating a throwaway self-signed certificate so msix packaging can proceed unsigned."
-              $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=Hiddify CI (unsigned)" -KeyUsage DigitalSignature -FriendlyName "Hiddify CI" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+              # MSIX signing requires the certificate's Subject to exactly match the package's
+              # `publisher` identity in make_config.yaml, or SignTool rejects it - so read that
+              # value instead of hardcoding a Subject that won't match.
+              $publisher = (Select-String -Path "windows\packaging\msix\make_config.yaml" -Pattern '^publisher:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
+              $cert = New-SelfSignedCertificate -Type Custom -Subject $publisher -KeyUsage DigitalSignature -FriendlyName "Hiddify CI" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
               $certPassword = ConvertTo-SecureString -String "hiddifyci" -Force -AsPlainText
               Export-PfxCertificate -Cert $cert -FilePath "windows\sign.pfx" -Password $certPassword | Out-Null
               (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: hiddifyci' | Set-Content "windows\packaging\msix\make_config.yaml"
