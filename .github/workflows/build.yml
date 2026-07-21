@@ -5,6 +5,12 @@ on:
       upload-artifact:
         type: boolean
         default: true
+      upload-pr-artifact:
+        # Uploads the unsigned build output as a short-lived Actions artifact for PR review,
+        # without touching upload-artifact's much wider blast radius (code-signing setup for
+        # macOS/Android/Windows, GitHub Release publishing) - PR builds should stay signing-free.
+        type: boolean
+        default: false
       tag-name:
         type: string
         default: "draft"
@@ -383,7 +389,7 @@ jobs:
           done
 
       - name: Upload Artifact
-        if: env.UPLOAD_ARTIFACT == 'true'
+        if: ${{ env.UPLOAD_ARTIFACT == 'true' || inputs.upload-pr-artifact }}
         uses: actions/upload-artifact@v6
         with:
           name: ${{matrix.platform}}

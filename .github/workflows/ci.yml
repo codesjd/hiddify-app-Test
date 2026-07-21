@@ -31,6 +31,10 @@ jobs:
     if: "${{!contains(github.event.head_commit.message, 'release: version')}}"
     with:
       upload-artifact: ${{ github.event_name == 'push' }}
+      # PR builds get an unsigned, short-lived artifact so reviewers can download and test them
+      # directly from the PR's Actions run, without enabling code-signing or release-publishing
+      # for every PR push (that's still push-only, via upload-artifact above).
+      upload-pr-artifact: ${{ github.event_name == 'pull_request' }}
 
   # The release build above downloads a prebuilt hiddify-core binary rather than compiling the
   # hiddify-core submodule (and its nested hiddify-sing-box/ray2sing submodules) from source, so
