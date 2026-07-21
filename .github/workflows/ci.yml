@@ -31,4 +31,48 @@ jobs:
     if: "${{!contains(github.event.head_commit.message, 'release: version')}}"
     with:
       upload-artifact: ${{ github.event_name == 'push' }}
-      
+
+  # The release build above downloads a prebuilt hiddify-core binary rather than compiling the
+  # hiddify-core submodule (and its nested hiddify-sing-box/ray2sing submodules) from source, so
+  # it never exercises Go-level changes to those repos at all. This lane closes that gap: it
+  # builds the core Go module tree from source and runs its Go test suites, so a regression there
+  # (a version-skew break, a broken protocol parser, etc.) actually fails CI instead of passing
+  # silently until someone next cuts a hiddify-core release from source.
+  core-source-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: hiddify-core/go.mod
+          cache-dependency-path: hiddify-core/go.sum
+
+      - name: Build hiddify-core from source
+        working-directory: hiddify-core
+        run: |
+          go build -tags with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_awg,tfogo_checklinkname0,with_conntrack ./v2/...
+
+      # v2/profile/test is excluded: it makes a live network request to fetch a real subscription
+      # and asserts against its content, which has already drifted independently of any code
+      # change (see the pcs/anytls/xray-core PR that added this lane) - not something to gate CI
+      # on. ray2sing_test's existing CheckUrlAndJson-based tests are also excluded for now: most
+      # of them currently fail on pre-existing, unrelated bugs (e.g. an SSH outbound's PrivateKey
+      # PEM formatting and a UDPOverTCP default mismatch) that predate this lane and need their
+      # own fix before they can usefully gate anything - only the newer field-assertion-style
+      # tests (pcs/anytls/xray-routing) are selected here, via -run, until that's done.
+      - name: Test hiddify-core, ray2sing, hiddify-sing-box (verified-green packages)
+        working-directory: hiddify-core
+        run: |
+          go test -tags with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_awg,tfogo_checklinkname0,with_conntrack \
+            $(go list ./v2/... | grep -v /v2/profile/test) \
+            github.com/sagernet/sing-box/common/tls/... \
+            github.com/sagernet/sing-box/protocol/hiddify/xray/...
+          go test -tags with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_awg,tfogo_checklinkname0,with_conntrack \
+            -run 'TestAnytls|TestPcs|TestInsecureFallbackCasingVariants|TestXrayRoutingGate' \
+            ./ray2sing/ray2sing_test/...
+

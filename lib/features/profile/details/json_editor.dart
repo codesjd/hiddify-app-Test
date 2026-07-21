@@ -199,6 +199,17 @@ const Map<String, Map<String, dynamic>> protocolSchemaValues = {
     "heartbeat": "10s",
     "tls": {"enabled": true},
   },
+  "anytls": {
+    "type": "anytls",
+    "tag": "anytls-out",
+    "server": "127.0.0.1",
+    "server_port": 8443,
+    "password": "hello",
+    "idle_session_check_interval": "30s",
+    "idle_session_timeout": "30s",
+    "min_idle_session": 0,
+    "tls": {"enabled": true},
+  },
   "ssh": {
     "type": "ssh",
     "tag": "ssh-out",
