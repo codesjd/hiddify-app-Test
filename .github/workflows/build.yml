@@ -117,6 +117,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v6
+        with:
+          submodules: ${{ startsWith(matrix.platform,'android') && 'recursive' || 'false' }}
 
       - name: Import Apple Codesign Certificates
         if: ${{ inputs.upload-artifact && startsWith(matrix.os,'macos') }}
@@ -178,14 +180,25 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: 17
-      # - name: Setup NDK
-      #   if: startsWith(matrix.platform,'android')
-      #   uses: nttld/setup-ndk@v1
-      #   id: setup-ndk
-      #   with:
-      #     ndk-version: ${{ env.NDK_VERSION }}
-      #     add-to-path: true
-      #     link-to-sdk: true
+
+      # hiddify-core (the Go core, checked out above via submodules: recursive) is compiled from
+      # source into the Android AAR here rather than downloaded prebuilt - see android-libs in the
+      # Makefile. That needs a matching Go toolchain plus the NDK gomobile bind cross-compiles with.
+      - name: Setup Go
+        if: startsWith(matrix.platform,'android')
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: hiddify-core/go.mod
+          cache-dependency-path: hiddify-core/go.sum
+
+      - name: Setup NDK
+        if: startsWith(matrix.platform,'android')
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: true
+          link-to-sdk: true
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -225,12 +238,26 @@ jobs:
           echo "keyPassword=${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}" >> android/key.properties
 
+      # msix packaging (make windows-msix-release, part of make windows-release below) fails
+      # outright if windows\sign.pfx doesn't exist, even for a build that was never going to be
+      # signed or distributed (e.g. a PR check). When the real signing secret isn't configured -
+      # true for any fork without it - fall back to a throwaway self-signed cert so packaging can
+      # still succeed; the resulting msix is unsigned/untrusted but that's fine for CI verification.
+      # Real releases (upload-artifact + a configured WINDOWS_SIGNING_KEY) still use the real cert.
       - name: Setup Windows Signing Properties
-        if: ${{ inputs.upload-artifact && startsWith(matrix.platform,'windows') }}
+        if: ${{ startsWith(matrix.platform,'windows') }}
         run: |
-            [IO.File]::WriteAllBytes("windows\sign.pfx", [Convert]::FromBase64String("${{ secrets.WINDOWS_SIGNING_KEY }}"))
-            (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}' | Set-Content "windows\packaging\msix\make_config.yaml"
-        
+            if ("${{ secrets.WINDOWS_SIGNING_KEY }}" -ne "") {
+              [IO.File]::WriteAllBytes("windows\sign.pfx", [Convert]::FromBase64String("${{ secrets.WINDOWS_SIGNING_KEY }}"))
+              (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}' | Set-Content "windows\packaging\msix\make_config.yaml"
+            } else {
+              Write-Host "WINDOWS_SIGNING_KEY not set - generating a throwaway self-signed certificate so msix packaging can proceed unsigned."
+              $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=Hiddify CI (unsigned)" -KeyUsage DigitalSignature -FriendlyName "Hiddify CI" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+              $certPassword = ConvertTo-SecureString -String "hiddifyci" -Force -AsPlainText
+              Export-PfxCertificate -Cert $cert -FilePath "windows\sign.pfx" -Password $certPassword | Out-Null
+              (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: hiddifyci' | Set-Content "windows\packaging\msix\make_config.yaml"
+            }
+
       # - name: Temporary disable Permission Handler for windows due to its issue in permission
       #   if: ${{ startsWith(matrix.platform,'windows') }}
       #   run: |
@@ -243,6 +270,8 @@ jobs:
 
 
       - name: Prepare for ${{ matrix.platform }}
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
           make ${{ matrix.platform }}-prepare
 

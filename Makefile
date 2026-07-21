@@ -466,7 +466,7 @@ ios-release: #not tested
 
 android-libs:
 	$(MKDIR) $(ANDROID_OUT) || echo Folder already exists. Skipping...
-	curl -L $(CORE_URL)/$(CORE_NAME)-android.tar.gz | tar xz -C $(ANDROID_OUT)/
+	make build-android-libs
 
 android-apk-libs: android-libs
 android-aab-libs: android-libs
