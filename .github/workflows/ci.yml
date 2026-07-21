@@ -65,14 +65,20 @@ jobs:
       # PEM formatting and a UDPOverTCP default mismatch) that predate this lane and need their
       # own fix before they can usefully gate anything - only the newer field-assertion-style
       # tests (pcs/anytls/xray-routing) are selected here, via -run, until that's done.
-      - name: Test hiddify-core, ray2sing, hiddify-sing-box (verified-green packages)
+      - name: Test hiddify-core, hiddify-sing-box (verified-green packages)
         working-directory: hiddify-core
         run: |
           go test -tags with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_awg,tfogo_checklinkname0,with_conntrack \
             $(go list ./v2/... | grep -v /v2/profile/test) \
             github.com/sagernet/sing-box/common/tls/... \
             github.com/sagernet/sing-box/protocol/hiddify/xray/...
-          go test -tags with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_awg,tfogo_checklinkname0,with_conntrack \
-            -run 'TestAnytls|TestPcs|TestInsecureFallbackCasingVariants|TestXrayRoutingGate' \
-            ./ray2sing/ray2sing_test/...
+
+      # ray2sing has its own go.mod (hiddify-core's go.mod only `replace`s it locally), so it's a
+      # separate module and its packages aren't reachable as a relative pattern from hiddify-core's
+      # module root - `go test` has to run from inside ray2sing itself.
+      - name: Test ray2sing (verified-green tests)
+        working-directory: hiddify-core/ray2sing
+        run: |
+          go test -run 'TestAnytls|TestPcs|TestInsecureFallbackCasingVariants|TestXrayRoutingGate' \
+            ./ray2sing_test/...
 
