@@ -84,7 +84,9 @@ class BoxService(
 //                it.fixAndroidStack = Bugs.fixAndroidStack
 //
 //            })
-            Libbox.redirectStderr(File(Settings.workingDir, "stderr.log").path)
+            // Libbox.RedirectStderr was removed upstream; hiddify-core now redirects stderr
+            // internally (hutils.RedirectStderr, called from grpc_server.go) as part of its own
+            // setup, so there's nothing left for the app to call here.
             initializeOnce = true
             return
         }
@@ -160,7 +162,9 @@ class BoxService(
             }
 
             DefaultNetworkMonitor.start()
-            Libbox.setMemoryLimit(!Settings.disableMemoryLimit)
+            // Libbox.SetMemoryLimit(bool) was removed upstream; memory limiting now happens
+            // inside libbox.Setup() itself (iOS gets an automatic Network Extension cap, other
+            // platforms are left unrestricted) - see hiddify-core's v2/hcore/start.go for details.
             val newService = try {
                 Mobile.setup(
                     SetupOptions().also {

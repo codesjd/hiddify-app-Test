@@ -98,7 +98,9 @@ class MethodHandler(private val scope: CoroutineScope) : FlutterPlugin,
                                 },null)
 
 //                            Libbox.setup(Settings.baseDir, Settings.workingDir, Settings.tempDir, false)
-                            Libbox.redirectStderr(File(Settings.workingDir, "stderr2.log").path)
+                            // Libbox.RedirectStderr was removed upstream; hiddify-core now redirects
+                            // stderr internally (hutils.RedirectStderr, called from grpc_server.go)
+                            // as part of its own setup, so there's nothing left for the app to call here.
 
                             success("")
                         }.onFailure {
