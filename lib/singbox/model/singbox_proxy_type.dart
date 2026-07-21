@@ -18,6 +18,7 @@ enum ProxyType {
   vless("VLESS"),
   tuic("TUIC"),
   hysteria2("Hysteria2"),
+  anytls("AnyTLS"),
   mieru("Mieru"),
 
   selector("Selector"),

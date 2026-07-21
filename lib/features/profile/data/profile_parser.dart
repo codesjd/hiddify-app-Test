@@ -395,6 +395,7 @@ class ProfileParser {
         'tuic' => fragment ?? ProxyType.tuic.label,
         'hy2' || 'hysteria2' => fragment ?? ProxyType.hysteria2.label,
         'hy' || 'hysteria' => fragment ?? ProxyType.hysteria.label,
+        'anytls' => fragment ?? ProxyType.anytls.label,
         'ssh' => fragment ?? ProxyType.ssh.label,
         'wg' => fragment ?? ProxyType.wireguard.label,
         'awg' => fragment ?? ProxyType.awg.label,
