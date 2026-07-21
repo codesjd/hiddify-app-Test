@@ -87,8 +87,13 @@ install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
 install(FILES "../hiddify-core/bin/hiddify-core.dll" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
 COMPONENT Runtime RENAME hiddify-core.dll)
 
-install(FILES "../hiddify-core/bin/libcronet.dll" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
-COMPONENT Runtime RENAME libcronet.dll)
+# libcronet.dll backs the naive outbound protocol only; hiddify-core's own build pulls it from a
+# pinned sagernet/cronet-go commit that isn't always resolvable (an upstream pin/proxy issue, not
+# something this build controls), so don't hard-fail packaging the rest of the app over it.
+if(EXISTS "../hiddify-core/bin/libcronet.dll")
+  install(FILES "../hiddify-core/bin/libcronet.dll" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime RENAME libcronet.dll)
+endif()
 
 install(FILES "../hiddify-core/bin/HiddifyCli.exe" DESTINATION "${CMAKE_INSTALL_PREFIX}"
 COMPONENT Runtime RENAME HiddifyCli.exe)
