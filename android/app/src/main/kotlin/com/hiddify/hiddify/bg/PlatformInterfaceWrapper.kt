@@ -10,6 +10,7 @@ import androidx.annotation.RequiresApi
 import com.hiddify.hiddify.Application
 import com.hiddify.core.libbox.InterfaceUpdateListener
 import com.hiddify.core.libbox.Libbox
+import com.hiddify.core.libbox.NeighborUpdateListener
 import com.hiddify.core.libbox.NetworkInterfaceIterator
 import com.hiddify.core.libbox.PlatformInterface
 import com.hiddify.core.libbox.StringIterator
@@ -145,6 +146,17 @@ interface PlatformInterfaceWrapper : PlatformInterface {
     override fun includeAllNetworks(): Boolean = false
 
     override fun clearDNSCache() {
+    }
+
+    // Neighbor-table monitoring and interface self-registration aren't implemented on Android -
+    // no-op, same as autoDetectInterfaceControl/clearDNSCache above.
+    override fun startNeighborMonitor(listener: NeighborUpdateListener) {
+    }
+
+    override fun closeNeighborMonitor(listener: NeighborUpdateListener) {
+    }
+
+    override fun registerMyInterface(name: String) {
     }
 
     override fun readWIFIState(): WIFIState? {
