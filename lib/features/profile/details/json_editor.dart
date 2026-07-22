@@ -347,7 +347,7 @@ const Map<String, List<String>> possibleValues = {
     "randomized",
   ],
   "config.outbounds.packet_encoding": <String>["", "(none)", "xudp", "packetaddr"],
-  "config.outbounds.transport.type": <String>["", "http", "ws", "grpc", "quic", "httpupgrade"],
+  "config.outbounds.transport.type": <String>["", "http", "ws", "grpc", "quic", "httpupgrade", "xhttp"],
   "config.outbounds.type": <String>[
     "vless",
     "dnstt",
