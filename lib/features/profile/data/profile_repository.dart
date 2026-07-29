@@ -133,31 +133,31 @@ class ProfileRepositoryImpl with ExceptionHandler, InfraLogger implements Profil
         final id = profEntity?.id ?? const Uuid().v4();
         final file = _profilePathResolver.file(id);
         final tempFile = _profilePathResolver.tempFile(id);
-        try {
-          if (profEntity != null && profEntity is RemoteProfileEntity) {
-            // Update
-            if (userOverride != null) {
-              profEntity = profEntity.copyWith(userOverride: userOverride);
-            }
-            return _profileParser
-                .updateRemote(rp: profEntity, tempFilePath: tempFile.path, cancelToken: cancelToken)
-                .flatMap(
-                  (profEntity) =>
-                      validateConfig(
-                        file.path,
-                        tempFile.path,
-                        ProfileParser.profileOverrideHelper(profile: profEntity),
-                        false,
-                      ).flatMap(
-                        (unit) => TaskEither.tryCatch(() async {
-                          await _profileDataSource.edit(id, profEntity);
-                          return unit;
-                        }, ProfileFailure.unexpected),
-                      ),
-                );
-          } else {
-            // Add
-            return _profileParser
+        final task = profEntity != null && profEntity is RemoteProfileEntity
+            ? (() {
+                // Update
+                if (userOverride != null) {
+                  profEntity = profEntity!.copyWith(userOverride: userOverride);
+                }
+                return _profileParser
+                    .updateRemote(rp: profEntity as RemoteProfileEntity, tempFilePath: tempFile.path, cancelToken: cancelToken)
+                    .flatMap(
+                      (profEntity) =>
+                          validateConfig(
+                            file.path,
+                            tempFile.path,
+                            ProfileParser.profileOverrideHelper(profile: profEntity),
+                            false,
+                          ).flatMap(
+                            (unit) => TaskEither.tryCatch(() async {
+                              await _profileDataSource.edit(id, profEntity);
+                              return unit;
+                            }, ProfileFailure.unexpected),
+                          ),
+                    );
+              })()
+            : _profileParser
+                // Add
                 .addRemote(
                   id: id,
                   url: url,
@@ -179,10 +179,13 @@ class ProfileRepositoryImpl with ExceptionHandler, InfraLogger implements Profil
                         }, ProfileFailure.unexpected),
                       ),
                 );
+        return TaskEither.tryCatch(() async {
+          try {
+            return (await task.run()).getOrElse((l) => throw l);
+          } finally {
+            if (tempFile.existsSync()) tempFile.deleteSync();
           }
-        } finally {
-          if (tempFile.existsSync()) tempFile.deleteSync();
-        }
+        }, ProfileFailure.unexpected);
       });
 
   @override
@@ -226,8 +229,7 @@ class ProfileRepositoryImpl with ExceptionHandler, InfraLogger implements Profil
         final id = oProfile.id;
         final file = _profilePathResolver.file(id);
         final tempFile = _profilePathResolver.tempFile(id);
-        try {
-          return TaskEither.tryCatch(
+        final task = TaskEither.tryCatch(
             () async => await tempFile.writeAsString(nContent),
             ProfileFailure.unexpected,
           ).flatMap(
@@ -252,9 +254,13 @@ class ProfileRepositoryImpl with ExceptionHandler, InfraLogger implements Profil
                       ),
                 ),
           );
-        } finally {
-          if (tempFile.existsSync()) tempFile.deleteSync();
-        }
+        return TaskEither.tryCatch(() async {
+          try {
+            return (await task.run()).getOrElse((l) => throw l);
+          } finally {
+            if (tempFile.existsSync()) tempFile.deleteSync();
+          }
+        }, ProfileFailure.unexpected);
       });
 
   @override

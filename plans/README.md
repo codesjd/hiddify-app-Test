@@ -29,7 +29,7 @@ row when done.
 | 001 | Make lint, analysis and tests actually run in CI | P1 | M | — | DONE — analyzer backlog: 4689 findings (cascading from missing codegen; build_runner ^2.4.x incompatible with analyzer 7.6.x used by custom_lint ^0.7.x — test suite cannot run until resolved) |
 | 002 | Stop writing proxy credentials into logs and crash telemetry | P1 | S | — | DONE — test file created; flutter test blocked by same codegen blocker as 001 |
 | 003 | Fix the settings that never reach the core, and add a guard | P1 | M | 001 | DONE — 3 drifts fixed, drift guard test added (hardcoded key-shape mirror; flutter test blocked by codegen blocker) |
-| 004 | Actually delete the profile temp files holding subscription credentials | P1 | M | 001 | TODO |
+| 004 | Actually delete the profile temp files holding subscription credentials | P1 | M | 001 | DONE — upsertRemote + offlineUpdate fixed (task.run() inside try/finally); sidecar files deleted in parser. Manual step 5 not runnable in this env. |
 | 005 | Stop re-sorting the proxy list / re-parsing the log buffer per tick | P2 | S | 001 | TODO |
 | 006 | Stop the proxy-list stream dying permanently when the core is slow to start | P1 | M | 001 | TODO |
 
