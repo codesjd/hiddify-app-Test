@@ -240,7 +240,7 @@ class ProfileParser {
     // Start workers
     await Future.wait(List.generate(parallelism, (_) => worker()));
 
-    if (results.any((e) => e != null)) {
+    if (results.every((e) => e != null)) {
       final newContent = results.join("\n");
       await File(tempFilePath).writeAsString(newContent);
     }

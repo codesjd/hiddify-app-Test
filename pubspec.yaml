@@ -70,7 +70,7 @@ dependencies:
   gap: ^3.0.1
   # percent_indicator_premium: ^0.0.2
   sliver_tools: ^0.2.12
-  font_awesome_flutter: ^10.7.0
+  font_awesome_flutter: ^11.0.0
   upgrader: ^11.3.0
   toastification: ^2.3.0
   version: ^3.0.2
@@ -99,7 +99,7 @@ dependencies:
   dynamic_color: ^1.7.0
   flutter_typeahead: ^5.0.1
   # flutter_platform_widgets: ^7.0.1
-  simple_icons: ^10.1.3
+  simple_icons: ^16.23.0
   basic_utils: ^5.7.0
   text_scroll: ^0.2.0
   flutter_markdown_plus: ^1.0.6
@@ -107,7 +107,9 @@ dependencies:
   # https://github.com/miguelpruivo/flutter_file_picker/wiki/Setup
   file_picker: ^8.1.7
   installed_apps: # ^1.5.2
-    git: https://github.com/VB10/installed_apps
+    git:
+      url: https://github.com/VB10/installed_apps
+      ref: 395d51876f9b5b4bc620d8549b05755c6f1966ba
 
   # change case of text
   # for example camelCase to snake_case
