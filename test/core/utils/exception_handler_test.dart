@@ -6,13 +6,9 @@ import 'package:hiddify/core/utils/exception_handler.dart';
 
 /// Helper: build a stream from a factory that is called on each subscription.
 Stream<int> _factoryStream(Stream<int> Function() factory) {
-  late StreamController<int> ctrl;
-  ctrl = StreamController<int>(
-    onListen: () {
-      factory().listen(ctrl.add, onError: ctrl.addError, onDone: ctrl.close);
-    },
-  );
-  return ctrl.stream;
+  return Stream<int>.multi((controller) {
+    factory().listen(controller.add, onError: controller.addError, onDone: controller.close);
+  });
 }
 
 void main() {
@@ -44,32 +40,25 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 200));
       await sub.cancel();
 
-      expect(results, [
-        const Right<String, int>(1),
-        const Left<String, int>("error"),
-        const Right<String, int>(2),
-      ]);
+      expect(results, [const Right<String, int>(1), const Left<String, int>("error"), const Right<String, int>(2)]);
     });
 
     test("Should complete normally when source completes", () async {
       final source = Stream<int>.fromIterable([1, 2]);
       final results = <Either<String, int>>[];
 
-      await source
-          .handleExceptions<String>((e, _) => "error")
-          .forEach(results.add);
+      await source.handleExceptions<String>((e, _) => "error").forEach(results.add);
 
-      expect(results, [
-        const Right<String, int>(1),
-        const Right<String, int>(2),
-      ]);
+      expect(results, [const Right<String, int>(1), const Right<String, int>(2)]);
     });
 
     test("Should not complete after repeated errors", () async {
       var emissions = 0;
-      final source = _factoryStream(() => Stream<int>.multi((c) {
-            c.addError(Exception("down"));
-          }));
+      final source = _factoryStream(
+        () => Stream<int>.multi((c) {
+          c.addError(Exception("down"));
+        }),
+      );
 
       final wrapped = source.handleExceptions<String>(
         (e, _) => "error",

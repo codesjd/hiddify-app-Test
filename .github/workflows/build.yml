@@ -62,7 +62,6 @@ jobs:
         continue-on-error: true   # remove once formatting is normalized
       - name: Test
         run: flutter test
-        continue-on-error: true   # remove once build_runner/analyzer incompatibility is resolved
 
       - name: make draftBuildCode
         id: draftBuildCode

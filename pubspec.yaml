@@ -203,3 +203,7 @@ sentry:
   upload_sources: true
   log_level: info
   ignore_missing: true
+
+# ponytail: temporary pin; remove when riverpod_generator/custom_lint_core stop resolving analyzer_plugin 0.12.x with analyzer 7.6.x.
+dependency_overrides:
+  analyzer_plugin: ^0.13.0
