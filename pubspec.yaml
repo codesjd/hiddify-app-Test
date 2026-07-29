@@ -122,9 +122,17 @@ dependencies:
   humanizer: ^3.0.1
 
 dev_dependencies:
-  # flutter_test:
-  #   sdk: flutter
+  flutter_test:
+    sdk: flutter
   lint: ^2.3.0
+  # custom_lint and riverpod_lint are declared here so analysis_options.yaml's
+  # plugin and rule references are honest, but they cannot be activated until
+  # build_runner is updated to a version that supports analyzer >=7.0.0.
+  # custom_lint ^0.7.x pulls analyzer 7.x which breaks analyzer_plugin 0.12.0
+  # used by build_runner ^2.4.x. Remove this comment and the pins below once
+  # build_runner ships a release compatible with analyzer >=7.
+  # custom_lint: ^0.7.3
+  # riverpod_lint: ^2.6.0
   build_web_compilers: ^4.0.11
   build_runner: ^2.4.13
   json_serializable: ^6.7.1

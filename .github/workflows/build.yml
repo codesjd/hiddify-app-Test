@@ -53,7 +53,13 @@ jobs:
           cache: true
           
       - name: Prepare
-        run: make linux-amd64-prepare
+        run: make verify-prepare
+      - name: Analyze
+        run: make analyze
+        continue-on-error: true   # remove once the backlog is cleared
+      - name: Format check
+        run: make format-check
+        continue-on-error: true   # remove once formatting is normalized
       - name: Test
         run: flutter test
 

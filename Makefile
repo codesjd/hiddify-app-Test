@@ -75,6 +75,21 @@ gen:
 translate:
 	dart run slang
 
+# Codegen without downloading platform native libs - enough to analyze and test.
+verify-prepare: get gen translate
+
+analyze: verify-prepare
+	flutter analyze
+	# dart run custom_lint  # blocked until custom_lint is compatible with build_runner
+
+format-check:
+	dart format --set-exit-if-changed --line-length 120 lib test
+
+test: verify-prepare
+	flutter test
+
+check: analyze format-check test
+
 
 
 prepare:
