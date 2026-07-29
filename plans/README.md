@@ -31,7 +31,7 @@ row when done.
 | 003 | Fix the settings that never reach the core, and add a guard | P1 | M | 001 | DONE — 3 drifts fixed, drift guard test added (hardcoded key-shape mirror; flutter test blocked by codegen blocker) |
 | 004 | Actually delete the profile temp files holding subscription credentials | P1 | M | 001 | DONE — upsertRemote + offlineUpdate fixed (task.run() inside try/finally); sidecar files deleted in parser. Manual step 5 not runnable in this env. |
 | 005 | Stop re-sorting the proxy list / re-parsing the log buffer per tick | P2 | S | 001 | DONE — throttleTime(250ms, leading:true) added to proxy stream; deleted commented-out block; throttle added before log parse. Manual smoke check not runnable in this env. |
-| 006 | Stop the proxy-list stream dying permanently when the core is slow to start | P1 | M | 001 | TODO |
+| 006 | Stop the proxy-list stream dying permanently when the core is slow to start | P1 | M | 001 | DONE — handleExceptions resumes with backoff; watchActiveGroups polls instead of completing empty. Step 4 (Go side) skipped per plan instructions. Manual test not runnable in this env. |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).

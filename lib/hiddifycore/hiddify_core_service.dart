@@ -297,9 +297,12 @@ class HiddifyCoreService with InfraLogger {
   Stream<List<OutboundGroup>> watchActiveGroups() async* {
     loggy.info("watching active groups");
 
-    if (!core.isInitialized()) {
-      loggy.debug("core is not initialized, returning empty group stream");
-      return;
+    // Wait for core to initialize instead of completing the stream empty.
+    // handleExceptions will re-subscribe on error, so returning an empty
+    // completed stream here would permanently end the proxy list.
+    while (!core.isInitialized()) {
+      loggy.debug("core is not initialized, waiting 500ms");
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
 
     try {
