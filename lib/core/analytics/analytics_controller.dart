@@ -54,6 +54,7 @@ class AnalyticsController extends _$AnalyticsController with AppLogger {
         options.enableUserInteractionTracing = true;
         options.addIntegration(sentryLogger);
         options.beforeSend = sentryBeforeSend;
+        options.beforeBreadcrumb = sentryBeforeBreadcrumb;
       });
 
       state = const AsyncData(true);
