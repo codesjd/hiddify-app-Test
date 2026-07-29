@@ -188,6 +188,10 @@ abstract class ConfigOptions {
 
   static final enableTlsFragment = PreferencesNotifier.create<bool, bool>("enable-tls-fragment", false);
 
+  // NOTE: not part of SingboxTlsTricks and therefore never reaches the core.
+  // Kept because the settings UI still renders it; removing the UI control is
+  // a separate product decision. Do not add it back to the preferences map
+  // until the core accepts it - export would emit a key import cannot restore.
   static final fragmentPackets = PreferencesNotifier.create<String, String>(
     "fragment-packets",
     "tlshello",
@@ -376,10 +380,13 @@ abstract class ConfigOptions {
     "strict-route": strictRoute,
     "connection-test-url": connectionTestUrl,
     "url-test-interval": urlTestInterval,
+    "enable-clash-api": enableClashApi,
     "clash-api-port": clashApiPort,
     // "bypass-lan": bypassLan,
     "allow-connection-from-lan": allowConnectionFromLan,
     "lan-sharing-password": lanSharingPassword,
+    "enable-fake-dns": enableFakeDns,
+    "independent-dns-cache": independentDnsCache,
     // "enable-dns-routing": enableDnsRouting,
 
     // mux
@@ -390,14 +397,16 @@ abstract class ConfigOptions {
 
     // tls-tricks
     "tls-tricks.enable-fragment": enableTlsFragment,
-    "tls-tricks.fragment-packets": fragmentPackets,
     "tls-tricks.fragment-size": tlsFragmentSize,
     "tls-tricks.fragment-sleep": tlsFragmentSleep,
     "tls-tricks.mixed-sni-case": enableTlsMixedSniCase,
     "tls-tricks.enable-padding": enableTlsPadding,
     "tls-tricks.padding-size": tlsPaddingSize,
 
+    "chain-status": chainStatus,
+
     // EXTRA-SECURITY
+    "extra-security.mode": extraSecurityMode,
     // warp
     "extra-security.warp.license-key": extraSecurityWarpLicenseKey,
     // psiphon
@@ -407,6 +416,7 @@ abstract class ConfigOptions {
     "extra-security.profile.id": extraSecurityProfileId,
 
     // UNBLOCKER
+    "unblocker.mode": unblockerMode,
     // warp
     "unblocker.warp.license-key": unblockerWarpLicenseKey,
     "unblocker.warp.clean-ip": unblockerWarpCleanIp,
@@ -528,7 +538,7 @@ abstract class ConfigOptions {
         profile: SingboxExtraSecurityProfileOption(id: ref.watch(extraSecurityProfileId)),
       ),
       unblocker: SingboxUnblockerOption(
-        mode: ref.watch(extraSecurityMode),
+        mode: ref.watch(unblockerMode),
         warp: SingboxUnblockerWarpOption(
           licenseKey: ref.watch(unblockerWarpLicenseKey),
           cleanIp: ref.watch(unblockerWarpCleanIp),
