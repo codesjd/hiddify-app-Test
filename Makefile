@@ -76,7 +76,9 @@ translate:
 	dart run slang
 
 # Codegen without downloading platform native libs - enough to analyze and test.
-verify-prepare: get gen translate
+# gen (build_runner) is excluded: build_runner ^2.4.x is incompatible with
+# analyzer 7.x pulled by custom_lint ^0.7.x; remove this comment once resolved.
+verify-prepare: get translate
 
 analyze: verify-prepare
 	flutter analyze
