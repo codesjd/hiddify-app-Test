@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:rxdart/rxdart.dart';
+
 import 'package:dartx/dartx.dart';
 
 import 'package:hiddify/core/haptic/haptic_service.dart';
@@ -64,26 +66,14 @@ class ProxiesOverviewNotifier extends _$ProxiesOverviewNotifier with AppLogger {
       return Stream.error(const ServiceNotRunning());
     }
     final sortBy = ref.watch(proxiesSortNotifierProvider);
-    // yield* ref
-    //     .watch(proxyRepositoryProvider)
-    //     .watchProxies()
-    //     .throttleTime(
-    //       const Duration(milliseconds: 100),
-    //       leading: false,
-    //       trailing: true,
-    //     )
-    //     .map(
-    //       (event) => event.getOrElse(
-    //         (err) {
-    //           loggy.warning("error receiving proxies", err);
-    //           throw err;
-    //         },
-    //       ),
-    //     )
-    //     .asyncMap((proxies) async => _sortOutbounds(proxies, sortBy));
     return ref
         .watch(proxyRepositoryProvider)
         .watchProxies()
+        .throttleTime(
+          const Duration(milliseconds: 250),
+          leading: true,
+          trailing: true,
+        )
         .map(
           (event) => event.getOrElse((err) {
             loggy.warning("error receiving proxies", err);
