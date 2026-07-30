@@ -149,7 +149,7 @@ class ProfileTileMain extends HookConsumerWidget {
                                 onTap: () => _launchUrlWithCheck(context, ref, subInfo.supportUrl!),
                                 borderRadius: BorderRadius.circular(8),
                                 child: _InfoItem(
-                                  icon: _getLinkIcon(subInfo.supportUrl!, FontAwesomeIcons.headset),
+                                  icon: _getLinkIcon(subInfo.supportUrl!, FontAwesomeIcons.headset.data),
                                   label: t.components.subscriptionInfo.profileSupport,
                                   value: _formatSupportLink(subInfo.supportUrl!),
                                 ),
@@ -172,16 +172,16 @@ class ProfileTileMain extends HookConsumerWidget {
     final host = uri.host.toLowerCase();
 
     if (host.endsWith('telegram.me') || host.endsWith('t.me')) {
-      return FontAwesomeIcons.telegram;
+      return FontAwesomeIcons.telegram.data;
     }
     if (host.endsWith('instagram.com')) {
-      return FontAwesomeIcons.instagram;
+      return FontAwesomeIcons.instagram.data;
     }
     if (host.endsWith('twitter.com')) {
-      return FontAwesomeIcons.xTwitter;
+      return FontAwesomeIcons.xTwitter.data;
     }
     if (host.endsWith('facebook.com')) {
-      return FontAwesomeIcons.facebook;
+      return FontAwesomeIcons.facebook.data;
     }
     if (host.endsWith('hiddify.com')) {
       // return IconData();
