@@ -15,11 +15,11 @@ sealed class CoreStatus with _$CoreStatus {
   const factory CoreStatus.stopping() = CoreStopping;
 
   factory CoreStatus.fromEvent(dynamic event) {
-    event = event as Map<String, dynamic>?;
-    switch (event?["status"]) {
+    final map = event as Map<String, dynamic>?;
+    switch (map?["status"]) {
       case "Stopped":
-        final alertstr = event?["alert"] as String?;
-        var msgStr = event?["message"] as String?;
+        final alertstr = map?["alert"] as String?;
+        var msgStr = map?["message"] as String?;
         var alert = CoreAlert.values.firstOrNullWhere((e) => alertstr?.toLowerCase() == e.name.toLowerCase());
         if ((alert == null) && (alertstr ?? "") != "") {
           msgStr = ((msgStr ?? "") != "") ? "$alertstr: $msgStr" : alertstr;
@@ -34,7 +34,7 @@ sealed class CoreStatus with _$CoreStatus {
       case "Stopping":
         return const CoreStopping();
       default:
-        throw Exception("unexpected status [$event]");
+        throw Exception("unexpected status [$map]");
     }
   }
   factory CoreStatus.fromCoreInfo(CoreInfoResponse event) {

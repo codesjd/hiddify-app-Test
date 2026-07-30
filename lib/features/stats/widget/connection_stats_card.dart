@@ -36,14 +36,14 @@ class ConnectionStatsCard extends HookConsumerWidget {
           (tagDisplay: _, ipinfo: final ipinfo?) when ipinfo.ip.isNotEmpty => (
             label: Row(
               children: [
-                IPCountryFlag(countryCode: ipinfo.countryCode, size: 16),
+                IPCountryFlag(countryCode: ipinfo.countryCode),
                 // const Gap(4),
                 // OrganisationFlag(organization: proxy.ipinfo.org, size: 16),
               ],
             ),
             data: IPText(
               ip: ipinfo.ip,
-              onLongPress: () async {
+              onLongPress: () {
                 ref.read(ipInfoNotifierProvider.notifier).refresh();
               },
               constrained: true,

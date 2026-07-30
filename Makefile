@@ -85,8 +85,14 @@ analyze: verify-prepare
 	flutter analyze
 	# dart run custom_lint  # blocked until custom_lint is compatible with build_runner
 
+# ponytail: same exclude list as analysis_options.yaml — generated code is
+# reformatted by its own generator, not us; checking it here just chases
+# whatever formatter version build_runner/protoc happen to bundle.
 format-check:
-	dart format --set-exit-if-changed --line-length 120 lib test
+	find lib test -name '*.dart' \
+		-not -name '*.g.dart' -not -name '*.freezed.dart' -not -name '*.mapper.dart' \
+		-not -path 'lib/gen/*' -not -path 'lib/hiddifycore/generated/*' -print0 \
+		| xargs -0 dart format --set-exit-if-changed --line-length 120
 
 test: verify-prepare
 	flutter test

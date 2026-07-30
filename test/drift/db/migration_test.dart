@@ -2,8 +2,8 @@
 // ignore_for_file: unused_local_variable, unused_import
 import 'package:drift/drift.dart';
 import 'package:drift_dev/api/migrations_native.dart';
-import 'package:hiddify/core/db/db.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hiddify/core/db/db.dart';
 import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
@@ -46,14 +46,10 @@ void main() {
         active: true,
         name: 'My Profile',
         url: 'https://example.com/sub',
-        lastUpdate: DateTime.utc(2024, 1, 1),
-        updateInterval: null,
+        lastUpdate: DateTime.utc(2024),
         upload: 100,
         download: 200,
         total: 1000,
-        expire: null,
-        webPageUrl: null,
-        supportUrl: null,
       ),
     ];
     final expectedNewProfileEntriesData = <v2.ProfileEntriesData>[
@@ -63,14 +59,10 @@ void main() {
         active: true,
         name: 'My Profile',
         url: 'https://example.com/sub',
-        lastUpdate: DateTime.utc(2024, 1, 1),
-        updateInterval: null,
+        lastUpdate: DateTime.utc(2024),
         upload: 100,
         download: 200,
         total: 1000,
-        expire: null,
-        webPageUrl: null,
-        supportUrl: null,
       ),
     ];
 

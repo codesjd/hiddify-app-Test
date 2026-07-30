@@ -91,13 +91,13 @@ class App extends HookConsumerWidget with WidgetsBindingObserver, PresLogger {
                   title: Constants.appName,
                   builder: (context, child) {
                     final theme = Theme.of(context);
-                    child = UpgradeAlert(
+                    final wrapped = UpgradeAlert(
                       upgrader: upgrader,
                       navigatorKey: router.routerDelegate.navigatorKey,
                       child: child ?? const SizedBox(),
                     );
                     if (kDebugMode && _debugAccessibility) {
-                      return AccessibilityTools(checkFontOverflows: true, child: child);
+                      return AccessibilityTools(checkFontOverflows: true, child: wrapped);
                     }
                     return AnnotatedRegion<SystemUiOverlayStyle>(
                       value: SystemUiOverlayStyle(
@@ -107,7 +107,7 @@ class App extends HookConsumerWidget with WidgetsBindingObserver, PresLogger {
                             ? Brightness.light
                             : Brightness.dark,
                       ),
-                      child: child,
+                      child: wrapped,
                     );
                   },
                 );

@@ -35,6 +35,7 @@ class Db extends _$Db with InfraLogger {
       onUpgrade: stepByStep(
         from1To2: (m, schema) async {
           await m.alterTable(
+            // ignore: experimental_member_use
             TableMigration(
               schema.profileEntries,
               columnTransformer: {schema.profileEntries.type: const Constant<String>("remote")},

@@ -8,11 +8,7 @@ void main() {
   test('write(null) removes the key instead of throwing', () async {
     SharedPreferences.setMockInitialValues({'my-key': 'existing-value'});
     final prefs = await SharedPreferences.getInstance();
-    final entry = PreferencesEntry<String?, String?>(
-      preferences: prefs,
-      key: 'my-key',
-      defaultValue: null,
-    );
+    final entry = PreferencesEntry<String?, String?>(preferences: prefs, key: 'my-key', defaultValue: null);
 
     expect(prefs.containsKey('my-key'), isTrue);
 
@@ -26,11 +22,7 @@ void main() {
   test('write(non-null) still round-trips normally', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final entry = PreferencesEntry<String?, String?>(
-      preferences: prefs,
-      key: 'my-key',
-      defaultValue: null,
-    );
+    final entry = PreferencesEntry<String?, String?>(preferences: prefs, key: 'my-key', defaultValue: null);
 
     expect(await entry.write('value'), isTrue);
     expect(entry.read(), equals('value'));

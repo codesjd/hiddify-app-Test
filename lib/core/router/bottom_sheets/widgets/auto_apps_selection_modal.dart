@@ -131,7 +131,9 @@ class AutoAppsSelectionModal extends HookConsumerWidget {
                                               .read(appProxyLoadingProvider.notifier)
                                               .doAsync(ref.read(PerAppProxyProvider(mode).notifier).applyAutoSelection);
                                         },
-                                  child: Text(t.pages.settings.routing.generalOptions.perAppProxy.autoSelection.performNow),
+                                  child: Text(
+                                    t.pages.settings.routing.generalOptions.perAppProxy.autoSelection.performNow,
+                                  ),
                                 ),
                               ),
                               const Gap(8),
@@ -145,7 +147,9 @@ class AutoAppsSelectionModal extends HookConsumerWidget {
                                               ref.read(PerAppProxyProvider(mode).notifier).revertForceDeselection,
                                             );
                                       },
-                                child: Text(t.pages.settings.routing.generalOptions.perAppProxy.autoSelection.resetToDefault),
+                                child: Text(
+                                  t.pages.settings.routing.generalOptions.perAppProxy.autoSelection.resetToDefault,
+                                ),
                               ),
                             ],
                           ),

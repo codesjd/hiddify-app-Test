@@ -24,7 +24,7 @@ class _CancelOnDownloadClient extends DioHttpClient {
     String? userAgent,
     ({String username, String password})? credentials,
     bool proxyOnly = false,
-  }) async {
+  }) {
     cancelToken?.cancel();
     throw DioException(
       requestOptions: RequestOptions(path: url),

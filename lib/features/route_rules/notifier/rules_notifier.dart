@@ -54,10 +54,11 @@ class RulesNotifier extends _$RulesNotifier with AppLogger {
     await _updateFile();
   }
 
+  // newIndex is already adjusted for the removed item at oldIndex (ReorderableListView.onReorderItem contract)
   Future<void> reorder(int oldIndex, int newIndex) async {
     final current = state;
     final rule = current.removeAt(oldIndex);
-    current.insert(oldIndex < newIndex ? newIndex - 1 : newIndex, rule);
+    current.insert(newIndex, rule);
     state = _updateListOrder(current).toList();
     await _updateFile();
   }

@@ -9,15 +9,22 @@ import 'package:hiddify/utils/riverpod_utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import "package:simple_icons/simple_icons.dart";
 
-final _showIp = StateProvider.autoDispose((ref) {
-  ref.disposeDelay(const Duration(seconds: 20));
-  ref.listenSelf((previous, next) {
-    if (previous == false && next == true) {
-      ref.read(hapticServiceProvider.notifier).mediumImpact();
-    }
-  });
-  return false;
-});
+class _ShowIp extends AutoDisposeNotifier<bool> {
+  @override
+  bool build() {
+    ref.disposeDelay(const Duration(seconds: 20));
+    listenSelf((previous, next) {
+      if (previous == false && next == true) {
+        ref.read(hapticServiceProvider.notifier).mediumImpact();
+      }
+    });
+    return false;
+  }
+
+  void toggle() => state = !state;
+}
+
+final _showIp = AutoDisposeNotifierProvider<_ShowIp, bool>(_ShowIp.new);
 
 class IPText extends HookConsumerWidget {
   const IPText({required this.ip, required this.onLongPress, this.constrained = false, super.key});
@@ -39,7 +46,7 @@ class IPText extends HookConsumerWidget {
       label: t.pages.proxies.ipInfo.address,
       child: InkWell(
         onTap: () {
-          ref.read(_showIp.notifier).state = !isVisible;
+          ref.read(_showIp.notifier).toggle();
         },
         onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(12),
@@ -160,9 +167,9 @@ const Map<String, OrgIconData> organizationData = {
   "cloudflare": OrgIconData(SimpleIcons.cloudflare, SimpleIconColors.cloudflare),
   "hetzner": OrgIconData(SimpleIcons.hetzner, SimpleIconColors.hetzner),
   "ovh": OrgIconData(SimpleIcons.ovh, SimpleIconColors.ovh),
-  "azure": OrgIconData(Icons.cloud, const Color(0xFF0089D6)),
-  "amazon": OrgIconData(Icons.cloud, const Color(0xFF232F3E)),
-  "oracle": OrgIconData(Icons.cloud, const Color(0xFFF80000)),
+  "azure": OrgIconData(Icons.cloud, Color(0xFF0089D6)),
+  "amazon": OrgIconData(Icons.cloud, Color(0xFF232F3E)),
+  "oracle": OrgIconData(Icons.cloud, Color(0xFFF80000)),
   "fastly": OrgIconData(SimpleIcons.fastly, SimpleIconColors.fastly),
   "digitalocean": OrgIconData(SimpleIcons.digitalocean, SimpleIconColors.digitalocean),
   "alibaba": OrgIconData(SimpleIcons.alibabacloud, SimpleIconColors.alibabacloud),

@@ -28,20 +28,13 @@ String redactSensitive(String input) {
   var out = input;
   for (final key in _sensitiveJsonKeys) {
     // "key": "value"  ->  "key": "[redacted]"
-    out = out.replaceAll(
-      RegExp('"$key"\\s*:\\s*"[^"]*"', caseSensitive: false),
-      '"$key": "[redacted]"',
-    );
+    out = out.replaceAll(RegExp('"$key"\\s*:\\s*"[^"]*"', caseSensitive: false), '"$key": "[redacted]"');
   }
   // scheme://user:pass@host  ->  scheme://[redacted]@host
-  out = out.replaceAll(
-    RegExp(r'([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s@]+@'),
-    r'$1[redacted]@',
-  );
-  return out;
+  return out.replaceAll(RegExp(r'([a-zA-Z][a-zA-Z0-9+.-]*://)[^/\s@]+@'), r'$1[redacted]@');
 }
 
-FutureOr<SentryEvent?> sentryBeforeSend(SentryEvent event, Hint hint) async {
+FutureOr<SentryEvent?> sentryBeforeSend(SentryEvent event, Hint hint) {
   if (!canSendEvent(event.throwable)) return null;
   final scrubbed = event.copyWith(
     user: SentryUser(email: "", username: "", ipAddress: "0.0.0.0"),
@@ -52,11 +45,7 @@ FutureOr<SentryEvent?> sentryBeforeSend(SentryEvent event, Hint hint) async {
   final message = scrubbed.message;
   if (message == null) return scrubbed;
   return scrubbed.copyWith(
-    message: SentryMessage(
-      redactSensitive(message.formatted),
-      template: message.template,
-      params: message.params,
-    ),
+    message: SentryMessage(redactSensitive(message.formatted), template: message.template, params: message.params),
   );
 }
 
