@@ -98,7 +98,7 @@ class RoutingOptionsPage extends HookConsumerWidget {
                     child: ReorderableListView.builder(
                       padding: const EdgeInsets.only(bottom: 56 + 16 + 16),
                       buildDefaultDragHandles: false,
-                      onReorderItem: ref.read(rulesNotifierProvider.notifier).reorder,
+                      onReorder: ref.read(rulesNotifierProvider.notifier).reorder,
                       itemBuilder: (context, index) => RuleTile(key: Key('$index'), index: index, rule: rules[index]),
                       itemCount: rules.length,
                     ),
@@ -172,7 +172,7 @@ class RoutingOptionsPage extends HookConsumerWidget {
           ),
           SizeTransition(
             sizeFactor: CurvedAnimation(parent: animationController, curve: Curves.easeInOut),
-            alignment: Alignment.topLeft,
+            axisAlignment: -1,
             child: Column(
               children: [
                 Divider(height: 4, thickness: 4, color: theme.colorScheme.primaryContainer),
