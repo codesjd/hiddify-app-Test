@@ -47,7 +47,7 @@ We recommend using [Visual Studio Code](https://docs.flutter.dev/development/too
 #### Setting up the Environment
 
 We have extensive use of code generation in the form of [freezed](https://github.com/rrousselGit/freezed), [riverpod](https://github.com/rrousselGit/riverpod), etc. So it's generate these before running the code. Execute the following make commands in order:
-Assuming you have not built the `hiddify-core` and want to use [existing releases](https://github.com/hiddify/hiddify-next-core/releases), you should run the following command (based on your target platform):
+Assuming you have not built the `hiddify-core` and want to use [existing releases](https://github.com/hiddify/hiddify-core/releases), you should run the following command (based on your target platform):
 
 Before building, initialize the `hiddify-core` git submodule (only needed
 once, or after switching branches that reference a different submodule
