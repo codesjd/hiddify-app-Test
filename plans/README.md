@@ -57,10 +57,10 @@ row when done.
 | 026 | Fix nil-pointer crash in `DeleteProfile`/`SetActiveProfile` | P1 | S | — | DONE — nil-checked before dereference; 2 regression tests added |
 | 027 | Cache the LevelDB handle instead of open/close per call | P2 | M | — | DONE — getOrOpenDB caches per table name; go test passes |
 | 028 | Fix the broken `ray2sing/cmd` build (`go vet` failure) | P2 | S | — | DONE — pass context.Background() to Ray2Singbox; go build/vet clean |
-| 029 | Add tests for `v2/config/builder.go` (untested config-translation layer) | P2 | M | — | BLOCKED — the plan's own fixture (`&ReadOptions{Options: &option.Options{}}`) panics unconditionally in setOutbounds (tags[0] on an empty slice, builder.go:302) before any assertion runs; needs the plan's fixture revised (seed at least one outbound) before this can execute. No files changed. Latent robustness bug in setOutbounds also flagged as a new finding, not fixed. |
+| 029 | Add tests for `v2/config/builder.go` (untested config-translation layer) | P2 | M | — | BLOCKED (partially unblocked 2026-07-30) — the plan's own fixture (`&ReadOptions{Options: &option.Options{}}`) panicked unconditionally in setOutbounds (tags[0] on an empty slice, builder.go:302); that panic is now fixed (see "New findings" below), so the fixture will no longer crash, but this plan's actual test suite (TunInbound/FakeDns/RemoteDnsAddress tests) still hasn't been written. No files changed yet. |
 | 030 | Add control-plane tests for `v2/hcore` (Stop/Close/Restart/Pause) | P2 | M | — | DONE — 5 new tests; go test passes (11 tests, no failures). Step 3 confirmed the suspected `HiddifyOptions` nil-deref in `Restart()` still fires post-023, but 023's `DeferPanicToError` already contains it (5s delay + generic error) instead of crashing — reported as a new, still-open finding, not fixed here |
 | 031 | Remove the live network dependency in `v2/profile`'s only test, add unit tests | P2 | S–M | — | DONE — frozen httptest fixture replaces the live GitHub fetch; added GetByUrl/GetByName/DeleteById tests |
-| 032 | Widen `ray2sing` protocol test coverage (error paths) | P3 | M | — | PARTIAL — added TestVmess_TlsWebsocket (passes); the two malformed-input tests are blocked because `Ray2Singbox` (convert.go:247) silently discards `Ray2SingboxOptions`'s error, so no malformed input can ever surface an error via the public entry point — reported as a new finding, not fixed (out of this plan's scope) |
+| 032 | Widen `ray2sing` protocol test coverage (error paths) | P3 | M | — | PARTIAL (blocker fixed 2026-07-30) — added TestVmess_TlsWebsocket (passes); Steps 2/3's malformed-input tests were blocked because `Ray2Singbox` (convert.go:247) silently discarded `Ray2SingboxOptions`'s error — that's now fixed (see "New findings" below, with its own regression tests in convert_error_test.go), so Steps 2/3 are unblocked but still haven't been re-attempted as this specific plan's own vmess/trojan malformed-input tests |
 | 033 | Delete dead/commented-out Go code (`ray2sing`) | P3 | S | — | DONE — removed 5 dead blocks across xrayvless/xraytrojan/xrayvmess/xraydirect/hb64.go |
 | 034 | Split `config/builder.go`'s god function (`setRoutingOptions`) | P3 | M | 029 (recommended) | DONE — deleted 9 dead-code regions and split the 541-line function into 9 ordered sub-functions; rule/DNS-rule order verified byte-identical before/after (029 itself is BLOCKED, so 025's tests served as the regression net instead) |
 | 035 | Unify the TLS/reality fingerprint default across backends | P2 | S–M | — | DONE — confirmed oversight via git history, uncommented `fp="chrome"` in getRealityOptionsXray; test added |
@@ -73,35 +73,52 @@ REJECTED (with one-line rationale).
 
 ## New findings surfaced while executing plans 018-038 (2026-07-30)
 
-Not planned yet — recorded so they aren't rediscovered from scratch:
+The first four were found during plan execution and have since been fixed
+directly (2026-07-30, same day) — kept here with a `FIXED` marker rather
+than deleted, so the evidence trail isn't lost:
 
-- **`Restart()` still nil-pointer-dereferences on a never-configured
+- **FIXED — `Restart()` nil-pointer-dereferenced on a never-configured
   `HiddifyOptions`**, post-023. `hiddify-core/v2/hcore/restart.go` (`if
-  opts.EnableTun`) panics on a fresh instance; 023's lock-discipline work
-  didn't add the nil-check `StartService` already has. `DeferPanicToError`
-  contains the panic (5s delay + generic error) instead of crashing the
-  process, so it's a bad error path, not a crash — but still worth a small
-  follow-up plan (add the same nil-check `StartService` has).
-- **`Ray2Singbox`'s public entry point silently discards all parser
-  errors.** `hiddify-core/ray2sing/ray2sing/convert.go:247-253` returns
-  `convertedData.MarshalJSONContext(ctx)` unconditionally, dropping the error
-  from `Ray2SingboxOptions` — so no malformed input can ever produce a
-  non-nil error through the public API, even though the underlying parsers
-  (`VmessSingbox`, `TrojanSingbox`/`ParseUrl`) error correctly when called
-  directly. This blocked plan 032's Steps 2-3 (malformed-input tests) and is
-  the real fix needed before any error-path test coverage can be added.
-- **`setOutbounds` panics on an empty `input.Outbounds`.**
+  opts.EnableTun`) panicked on a fresh instance; 023's lock-discipline work
+  hadn't added the nil-check `StartService` already has. `DeferPanicToError`
+  contained the panic (5s delay + generic error) instead of crashing the
+  process, so it was a bad error path, not a crash. Fixed by treating a nil
+  `HiddifyOptions` as `EnableTun=false` and falling through to
+  `StartService`'s existing clean nil-check/error path; the existing
+  `TestRestart_WhenNotStarted_DoesNotPanic` (plan 030) was strengthened to
+  assert the clean `ERROR_BUILDING_CONFIG` response instead of just "does
+  not panic".
+- **FIXED — `Ray2Singbox`'s public entry point silently discarded all
+  parser errors.** `hiddify-core/ray2sing/ray2sing/convert.go:247-253`
+  returned `convertedData.MarshalJSONContext(ctx)` unconditionally, dropping
+  the error from `Ray2SingboxOptions` — so no malformed input could ever
+  produce a non-nil error through the public API, even though the
+  underlying parsers (`VmessSingbox`, `TrojanSingbox`/`ParseUrl`) error
+  correctly when called directly. This had blocked plan 032's Steps 2-3
+  (malformed-input tests). Fixed with an early `if err != nil { return nil,
+  err }`; `TestRay2Singbox_MalformedVmess_ReturnsError` and
+  `TestRay2Singbox_MalformedTrojan_ReturnsError` added
+  (`ray2sing_test/convert_error_test.go`). Plan 032's Steps 2-3 are now
+  unblocked for whoever picks that plan back up, but were not re-attempted
+  as part of this fix (out of scope — this was a bug fix, not a re-run of
+  032).
+- **FIXED — `setOutbounds` panicked on an empty `input.Outbounds`.**
   `hiddify-core/v2/config/builder.go:302` (`tags[0]`) index-out-of-range
-  panics whenever `BuildConfig` is called with zero outbounds and Warp
-  disabled — this blocked plan 029 entirely (its own test fixture hits
-  exactly this). Worth a defensive fix (skip selector/urlTest/balancer
-  construction, or fall back to a default tag, when `tags` is empty).
-- **`xrayvmess.go`'s port parsing truncates ports above 32767.**
-  `hiddify-core/ray2sing/ray2sing/xrayvmess.go` uses `toInt16` (signed)
+  panicked whenever `BuildConfig` ran with zero outbounds and Warp disabled
+  — this had blocked plan 029 entirely (its own test fixture hit exactly
+  this). Fixed by falling back to an empty default when `tags` is empty
+  instead of panicking (the rest of `setOutbounds` already handles an empty
+  `tags`/`selectorTags` slice fine); `TestSetOutbounds_NoOutbounds_DoesNotPanic`
+  added to `v2/config/builder_test.go`. **Plan 029 itself is still BLOCKED**
+  (no test file exists for it yet) — this fix only removes the panic that
+  blocked it; someone still needs to write 029's actual test suite.
+- **FIXED — `xrayvmess.go`'s port parsing truncated ports above 32767.**
+  `hiddify-core/ray2sing/ray2sing/xrayvmess.go` used `toInt16` (signed)
   instead of `vmess.go`'s `toUInt16`, so a VMess link with a server port
-  above 32767 silently corrupts when routed through the xray backend (e.g.
-  51820 → -13716). Found while writing plan 036's spike doc; a real
-  correctness bug, independent of the consolidation question.
+  above 32767 silently corrupted when routed through the xray backend (e.g.
+  51820 → -13716). Found while writing plan 036's spike doc. Fixed by
+  switching to `toUInt16`, matching `vmess.go`'s convention;
+  `TestXrayVmess_HighPort_NotTruncated` added.
 - **`ray2sing_test` has ~11-12 pre-existing, environment-driven test
   failures** unrelated to any of plans 018-038 (independently confirmed by
   3 separate executors): `TestBeePass` (live S3 fetch, blocked/403 in a
