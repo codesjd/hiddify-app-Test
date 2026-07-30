@@ -61,7 +61,7 @@ class ProxyRepositoryImpl with ExceptionHandler, InfraLogger implements ProxyRep
 
   @override
   Stream<Either<ProxyFailure, OutboundGroup?>> watchProxies() {
-    return singbox.watchGroup().handleExceptions((error, stackTrace) {
+    return singbox.watchGroup.handleExceptions((error, stackTrace) {
       loggy.error("error watching proxies", error, stackTrace);
       return ProxyUnexpectedFailure(error, stackTrace);
     });
@@ -69,7 +69,7 @@ class ProxyRepositoryImpl with ExceptionHandler, InfraLogger implements ProxyRep
 
   @override
   Stream<Either<ProxyFailure, List<OutboundGroup>>> watchActiveProxies() {
-    return singbox.watchActiveGroups().handleExceptions((error, stackTrace) {
+    return singbox.watchActiveGroups.handleExceptions((error, stackTrace) {
       loggy.error("error watching active proxies", error, stackTrace);
       return ProxyUnexpectedFailure(error, stackTrace);
     });

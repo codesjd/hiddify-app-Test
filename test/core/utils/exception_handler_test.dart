@@ -4,29 +4,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:hiddify/core/utils/exception_handler.dart';
 
-/// Helper: build a stream from a factory that is called on each subscription.
-Stream<int> _factoryStream(Stream<int> Function() factory) {
-  return Stream<int>.multi((controller) {
-    factory().listen(controller.add, onError: controller.addError, onDone: controller.close);
-  });
-}
-
 void main() {
   group("handleExceptions", () {
-    test("Should resume after error and not complete the stream", () async {
+    test("Should resume after error and not complete the stream (real single-subscription source)", () async {
       var calls = 0;
-      // First subscription: emits 1 then errors. Second: emits 2 then closes.
-      final source = _factoryStream(() {
+      // Every call must return a genuinely fresh, single-subscription stream - the
+      // same shape as the async* methods this extension actually wraps in production
+      // (watchGroup(), watchActiveGroups(), watchStats(), etc). First call: emits 1
+      // then errors. Second call: emits 2 then closes.
+      Stream<int> source() async* {
         calls++;
         if (calls == 1) {
-          return Stream<int>.multi((c) {
-            c.add(1);
-            c.addError(Exception("transient"));
-          });
+          yield 1;
+          throw Exception("transient");
         } else {
-          return Stream<int>.fromIterable([2]);
+          yield 2;
         }
-      });
+      }
 
       final results = <Either<String, int>>[];
       final wrapped = source.handleExceptions<String>(
@@ -44,7 +38,7 @@ void main() {
     });
 
     test("Should complete normally when source completes", () async {
-      final source = Stream<int>.fromIterable([1, 2]);
+      Stream<int> source() => Stream<int>.fromIterable([1, 2]);
       final results = <Either<String, int>>[];
 
       await source.handleExceptions<String>((e, _) => "error").forEach(results.add);
@@ -54,11 +48,9 @@ void main() {
 
     test("Should not complete after repeated errors", () async {
       var emissions = 0;
-      final source = _factoryStream(
-        () => Stream<int>.multi((c) {
-          c.addError(Exception("down"));
-        }),
-      );
+      Stream<int> source() async* {
+        throw Exception("down");
+      }
 
       final wrapped = source.handleExceptions<String>(
         (e, _) => "error",
@@ -73,6 +65,17 @@ void main() {
       await sub.cancel();
       // Multiple Left emissions received (backoff kept re-subscribing)
       expect(emissions, greaterThan(1));
+    });
+
+    test("sanity check: a single-subscription stream cannot be listened to twice - "
+        "this is why handleExceptions must take a factory, not an already-materialized stream", () {
+      Stream<int> single() async* {
+        yield 1;
+      }
+
+      final s = single();
+      s.listen((_) {});
+      expect(() => s.listen((_) {}), throwsStateError);
     });
   });
 }

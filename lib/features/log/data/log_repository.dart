@@ -46,14 +46,10 @@ class LogRepositoryImpl with ExceptionHandler, InfraLogger implements LogReposit
 
   @override
   Stream<Either<LogFailure, List<LogEntity>>> watchLogs() {
-    return singbox
-        .watchLogs(logPathResolver.coreFile().path)
-        .throttleTime(
-          const Duration(milliseconds: 250),
-          leading: true,
-          trailing: true,
-        )
-        .map((event) => event.map(LogParser.parseLogProto).toList())
+    return (() => singbox
+            .watchLogs(logPathResolver.coreFile().path)
+            .throttleTime(const Duration(milliseconds: 250), leading: true, trailing: true)
+            .map((event) => event.map(LogParser.parseLogProto).toList()))
         .handleExceptions((error, stackTrace) {
           loggy.warning("error watching logs", error, stackTrace);
           return LogFailure.unexpected(error, stackTrace);
