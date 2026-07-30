@@ -46,30 +46,74 @@ row when done.
 | 015 | Stop 3 widgets rebuilding at core tick rate by narrowing their `activeProxyNotifierProvider` watch | P2 | S | — | TODO |
 | 016 | Migrate freezed 2 → 3 | P3 | M | 001 | TODO |
 | 017 | Riverpod v3 prep — stop referencing generated per-provider `Ref` typedefs | P3 | S | — | TODO |
-| 018 | Require an authenticated secret on the core's gRPC control channel (all 3 platforms) | P0 | L | — | TODO |
-| 019 | Authenticate the elevated Tunnel helper service (127.0.0.1:18020) | P1 | S–M | — | TODO |
-| 020 | Authenticate the elevated ICMP helper service (127.0.0.1:18021) | P1 | S | — | TODO |
-| 021 | Stop the Shadowsocks parser silently downgrading to no encryption | P2 | S | — | TODO |
-| 022 | Fix `GetSystemInfoStream`/`watchStats` not waiting for core init | P2 | S | 006 | TODO |
-| 023 | `HiddifyInstance` lock discipline (`StartedService`/`HiddifyOptions`) | P1 | M | — | TODO |
-| 024 | Fix unguarded `grpcServer` map read in `Close` | P2 | S | — | TODO |
-| 025 | Fix `ipMaps` race and add DNS-cache short-circuit | P2 | S–M | — | TODO |
-| 026 | Fix nil-pointer crash in `DeleteProfile`/`SetActiveProfile` | P1 | S | — | TODO |
-| 027 | Cache the LevelDB handle instead of open/close per call | P2 | M | — | TODO |
-| 028 | Fix the broken `ray2sing/cmd` build (`go vet` failure) | P2 | S | — | TODO |
-| 029 | Add tests for `v2/config/builder.go` (untested config-translation layer) | P2 | M | — | TODO |
-| 030 | Add control-plane tests for `v2/hcore` (Stop/Close/Restart/Pause) | P2 | M | — | TODO — Step 3 is designed to surface a suspected new bug (see notes) |
-| 031 | Remove the live network dependency in `v2/profile`'s only test, add unit tests | P2 | S–M | — | TODO |
-| 032 | Widen `ray2sing` protocol test coverage (error paths) | P3 | M | — | TODO |
-| 033 | Delete dead/commented-out Go code (`ray2sing`) | P3 | S | — | TODO |
-| 034 | Split `config/builder.go`'s god function (`setRoutingOptions`) | P3 | M | 029 (recommended) | TODO |
-| 035 | Unify the TLS/reality fingerprint default across backends | P2 | S–M | — | TODO |
-| 036 | Investigate: consolidate `ray2sing`'s duplicated protocol builders (spike, no code change) | P3 | S–M | — | TODO |
-| 037 | Investigate: `hcore`'s sing-box abstraction boundary (spike, no code change) | P3 | S–M | — | TODO |
-| 038 | Document the `hiddify-sing-box` fork's basis vs. upstream | P3 | S | — | TODO |
+| 018 | Require an authenticated secret on the core's gRPC control channel (all 3 platforms) | P0 | L | — | PARTIAL — Steps 1-5 done (soft-mode secret interceptor in Go + secret threaded through on desktop/Android/iOS/mobile Dart); Step 6 (mandatory enforcement) deliberately deferred: no Android SDK or Xcode/macOS toolchain in this environment to verify those two platforms |
+| 019 | Authenticate the elevated Tunnel helper service (127.0.0.1:18020) | P1 | S–M | — | DONE — token-auth interceptor + file-based token gen; go build/vet/test all pass |
+| 020 | Authenticate the elevated ICMP helper service (127.0.0.1:18021) | P1 | S | — | DONE — mirrors 019's token pattern across icmp_platform_service.go and every client (pingHelper, ExitIcmpHelper, DialRemoteICMP + every RemoteICMPConn RPC); go build/vet/test all pass |
+| 021 | Stop the Shadowsocks parser silently downgrading to no encryption | P2 | S | — | DONE — errors instead of downgrading to method=none; test added |
+| 022 | Fix `GetSystemInfoStream`/`watchStats` not waiting for core init | P2 | S | 006 | DONE — watchStats now waits for core.isInitialized() before opening the stream, mirroring plan 006's watchActiveGroups fix; make analyze/test clean |
+| 023 | `HiddifyInstance` lock discipline (`StartedService`/`HiddifyOptions`) | P1 | M | — | PARTIAL — atomic.Pointer[StartedService] + optionsLock for HiddifyOptions implemented across all scope files plus 3 necessary mechanical Load/Store fixes the plan's own grep missed (commands.go, service.go, independent_instance.go); go build/vet/test all pass on current tree |
+| 024 | Fix unguarded `grpcServer` map read in `Close` | P2 | S | — | DONE — grpcServerExists(mode) mutex-guarded helper; regression test added |
+| 025 | Fix `ipMaps` race and add DNS-cache short-circuit | P2 | S–M | — | DONE — locked read, cache-hit short-circuit; new getIPs tests pass |
+| 026 | Fix nil-pointer crash in `DeleteProfile`/`SetActiveProfile` | P1 | S | — | DONE — nil-checked before dereference; 2 regression tests added |
+| 027 | Cache the LevelDB handle instead of open/close per call | P2 | M | — | DONE — getOrOpenDB caches per table name; go test passes |
+| 028 | Fix the broken `ray2sing/cmd` build (`go vet` failure) | P2 | S | — | DONE — pass context.Background() to Ray2Singbox; go build/vet clean |
+| 029 | Add tests for `v2/config/builder.go` (untested config-translation layer) | P2 | M | — | BLOCKED — the plan's own fixture (`&ReadOptions{Options: &option.Options{}}`) panics unconditionally in setOutbounds (tags[0] on an empty slice, builder.go:302) before any assertion runs; needs the plan's fixture revised (seed at least one outbound) before this can execute. No files changed. Latent robustness bug in setOutbounds also flagged as a new finding, not fixed. |
+| 030 | Add control-plane tests for `v2/hcore` (Stop/Close/Restart/Pause) | P2 | M | — | DONE — 5 new tests; go test passes (11 tests, no failures). Step 3 confirmed the suspected `HiddifyOptions` nil-deref in `Restart()` still fires post-023, but 023's `DeferPanicToError` already contains it (5s delay + generic error) instead of crashing — reported as a new, still-open finding, not fixed here |
+| 031 | Remove the live network dependency in `v2/profile`'s only test, add unit tests | P2 | S–M | — | DONE — frozen httptest fixture replaces the live GitHub fetch; added GetByUrl/GetByName/DeleteById tests |
+| 032 | Widen `ray2sing` protocol test coverage (error paths) | P3 | M | — | PARTIAL — added TestVmess_TlsWebsocket (passes); the two malformed-input tests are blocked because `Ray2Singbox` (convert.go:247) silently discards `Ray2SingboxOptions`'s error, so no malformed input can ever surface an error via the public entry point — reported as a new finding, not fixed (out of this plan's scope) |
+| 033 | Delete dead/commented-out Go code (`ray2sing`) | P3 | S | — | DONE — removed 5 dead blocks across xrayvless/xraytrojan/xrayvmess/xraydirect/hb64.go |
+| 034 | Split `config/builder.go`'s god function (`setRoutingOptions`) | P3 | M | 029 (recommended) | DONE — deleted 9 dead-code regions and split the 541-line function into 9 ordered sub-functions; rule/DNS-rule order verified byte-identical before/after (029 itself is BLOCKED, so 025's tests served as the regression net instead) |
+| 035 | Unify the TLS/reality fingerprint default across backends | P2 | S–M | — | DONE — confirmed oversight via git history, uncommented `fp="chrome"` in getRealityOptionsXray; test added |
+| 036 | Investigate: consolidate `ray2sing`'s duplicated protocol builders (spike, no code change) | P3 | S–M | — | DONE — hiddify-core/docs/protocol-builder-consolidation-spike.md; original fp-divergence confirmed already fixed (by 035), found 2 new live divergences (VLESS ECH/nosni gap, VMess xray port int16 truncation bug — new finding, not fixed) |
+| 037 | Investigate: `hcore`'s sing-box abstraction boundary (spike, no code change) | P3 | S–M | — | DONE — hiddify-core/docs/hcore-abstraction-boundary-spike.md; classified 17 files (drift from the plan's recorded 11), recommends deferring a full adapter interface in favor of extracting pure functions from proxy_info.go/commands.go |
+| 038 | Document the `hiddify-sing-box` fork's basis vs. upstream | P3 | S | — | DONE — Fork basis section added to hiddify-sing-box/README.md (commit `9f155483` inside that nested submodule only, per the plan's own instruction not to guess how outer submodule pointers should propagate — not pushed, not reflected in hiddify-core's tracked commit) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).
+
+## New findings surfaced while executing plans 018-038 (2026-07-30)
+
+Not planned yet — recorded so they aren't rediscovered from scratch:
+
+- **`Restart()` still nil-pointer-dereferences on a never-configured
+  `HiddifyOptions`**, post-023. `hiddify-core/v2/hcore/restart.go` (`if
+  opts.EnableTun`) panics on a fresh instance; 023's lock-discipline work
+  didn't add the nil-check `StartService` already has. `DeferPanicToError`
+  contains the panic (5s delay + generic error) instead of crashing the
+  process, so it's a bad error path, not a crash — but still worth a small
+  follow-up plan (add the same nil-check `StartService` has).
+- **`Ray2Singbox`'s public entry point silently discards all parser
+  errors.** `hiddify-core/ray2sing/ray2sing/convert.go:247-253` returns
+  `convertedData.MarshalJSONContext(ctx)` unconditionally, dropping the error
+  from `Ray2SingboxOptions` — so no malformed input can ever produce a
+  non-nil error through the public API, even though the underlying parsers
+  (`VmessSingbox`, `TrojanSingbox`/`ParseUrl`) error correctly when called
+  directly. This blocked plan 032's Steps 2-3 (malformed-input tests) and is
+  the real fix needed before any error-path test coverage can be added.
+- **`setOutbounds` panics on an empty `input.Outbounds`.**
+  `hiddify-core/v2/config/builder.go:302` (`tags[0]`) index-out-of-range
+  panics whenever `BuildConfig` is called with zero outbounds and Warp
+  disabled — this blocked plan 029 entirely (its own test fixture hits
+  exactly this). Worth a defensive fix (skip selector/urlTest/balancer
+  construction, or fall back to a default tag, when `tags` is empty).
+- **`xrayvmess.go`'s port parsing truncates ports above 32767.**
+  `hiddify-core/ray2sing/ray2sing/xrayvmess.go` uses `toInt16` (signed)
+  instead of `vmess.go`'s `toUInt16`, so a VMess link with a server port
+  above 32767 silently corrupts when routed through the xray backend (e.g.
+  51820 → -13716). Found while writing plan 036's spike doc; a real
+  correctness bug, independent of the consolidation question.
+- **`ray2sing_test` has ~11-12 pre-existing, environment-driven test
+  failures** unrelated to any of plans 018-038 (independently confirmed by
+  3 separate executors): `TestBeePass` (live S3 fetch, blocked/403 in a
+  sandboxed environment), and `TestHysteria`, `TestHysteria2`, `TestBase`,
+  `TestTrojan`, `TestTuic`, `TestVless`, `TestVmess`, `TestWiregaurd`
+  (visually-identical Got/want JSON — likely a `reflect.DeepEqual` mismatch
+  on unprinted struct fields from a sing-box/xray-core dependency-version
+  drift). Also note: `go test`/`go vet` on `hiddify-core/v2/...` needs
+  `-tags with_wireguard` to register the WARP/WireGuard endpoint type —
+  without it, any test exercising a `warp://` config fails with `outbound
+  type not found: warp` (this is not a bug, just an easy-to-miss build-tag
+  requirement matching how the real app is actually built).
 
 ## Third pass: Go core plans (2026-07-29, same day)
 
