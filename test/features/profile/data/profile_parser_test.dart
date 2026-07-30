@@ -26,7 +26,10 @@ class _CancelOnDownloadClient extends DioHttpClient {
     bool proxyOnly = false,
   }) async {
     cancelToken?.cancel();
-    throw DioException(requestOptions: RequestOptions(path: url), type: DioExceptionType.cancel);
+    throw DioException(
+      requestOptions: RequestOptions(path: url),
+      type: DioExceptionType.cancel,
+    );
   }
 }
 
@@ -50,15 +53,11 @@ void main() {
       expect(profile.isRight(), true);
       profile.match((l) {}, (r) {
         expect(r is RemoteProfileEntity, true);
-        r.map(
-          remote: (rp) {
-            expect(rp.name, equals("filename"));
-            expect(rp.url, equals(validBaseUrl));
-            expect(rp.options, isNull);
-            expect(rp.subInfo, isNull);
-          },
-          local: (lp) {},
-        );
+        final rp = r as RemoteProfileEntity;
+        expect(rp.name, equals("filename"));
+        expect(rp.url, equals(validBaseUrl));
+        expect(rp.options, isNull);
+        expect(rp.subInfo, isNull);
       });
     });
 
@@ -76,15 +75,11 @@ void main() {
       expect(profile.isRight(), true);
       profile.match((l) {}, (r) {
         expect(r is RemoteProfileEntity, true);
-        r.map(
-          remote: (rp) {
-            expect(rp.name, equals("b"));
-            expect(rp.url, equals(validExtendedUrl));
-            expect(rp.options, isNull);
-            expect(rp.subInfo, isNull);
-          },
-          local: (lp) {},
-        );
+        final rp = r as RemoteProfileEntity;
+        expect(rp.name, equals("b"));
+        expect(rp.url, equals(validExtendedUrl));
+        expect(rp.options, isNull);
+        expect(rp.subInfo, isNull);
       });
     });
 
@@ -120,26 +115,22 @@ void main() {
         expect(profile.isRight(), true);
         profile.match((l) {}, (r) {
           expect(r is RemoteProfileEntity, true);
-          r.map(
-            remote: (rp) {
-              expect(rp.name, equals("exampleTitle"));
-              expect(rp.url, equals(validExtendedUrl));
-              expect(rp.options, equals(const ProfileOptions(updateInterval: Duration(hours: 1))));
-              expect(
-                rp.subInfo,
-                equals(
-                  SubscriptionInfo(
-                    upload: 0,
-                    download: 1024,
-                    total: 10240,
-                    expire: DateTime.fromMillisecondsSinceEpoch(1704054600 * 1000),
-                    webPageUrl: validBaseUrl,
-                    supportUrl: validSupportUrl,
-                  ),
-                ),
-              );
-            },
-            local: (lp) {},
+          final rp = r as RemoteProfileEntity;
+          expect(rp.name, equals("exampleTitle"));
+          expect(rp.url, equals(validExtendedUrl));
+          expect(rp.options, equals(const ProfileOptions(updateInterval: Duration(hours: 1))));
+          expect(
+            rp.subInfo,
+            equals(
+              SubscriptionInfo(
+                upload: 0,
+                download: 1024,
+                total: 10240,
+                expire: DateTime.fromMillisecondsSinceEpoch(1704054600 * 1000),
+                webPageUrl: validBaseUrl,
+                supportUrl: validSupportUrl,
+              ),
+            ),
           );
         });
       });
@@ -175,16 +166,12 @@ void main() {
         expect(profile.isRight(), true);
         profile.match((l) {}, (r) {
           expect(r is RemoteProfileEntity, true);
-          r.map(
-            remote: (rp) {
-              expect(rp.subInfo, isNotNull);
-              expect(rp.subInfo!.total, equals(ProfileParser.infiniteTrafficThreshold + 1));
-              expect(
-                rp.subInfo!.expire,
-                equals(DateTime.fromMillisecondsSinceEpoch(ProfileParser.infiniteTimeThreshold * 1000)),
-              );
-            },
-            local: (lp) {},
+          final rp = r as RemoteProfileEntity;
+          expect(rp.subInfo, isNotNull);
+          expect(rp.subInfo!.total, equals(ProfileParser.infiniteTrafficThreshold + 1));
+          expect(
+            rp.subInfo!.expire,
+            equals(DateTime.fromMillisecondsSinceEpoch(ProfileParser.infiniteTimeThreshold * 1000)),
           );
         });
       });
@@ -229,7 +216,8 @@ void main() {
   // Plan 011: characterization tests for ProfileParser static methods
   group("populateHeaders parses headers from content", () {
     test("extracts # and // prefixed headers from content, ignores unknown keys", () {
-      const content = "#profile-title: My Config\n"
+      const content =
+          "#profile-title: My Config\n"
           "// support-url: https://example.com/support\n"
           "#unknown-key: should be dropped\n"
           "vless://actual-config-line-not-a-header";
@@ -255,10 +243,7 @@ void main() {
 
     test("content headers are overridden by remote headers with the same key", () {
       const content = "#profile-title: From Content";
-      final result = ProfileParser.populateHeaders(
-        content: content,
-        remoteHeaders: {"profile-title": "From Remote"},
-      );
+      final result = ProfileParser.populateHeaders(content: content, remoteHeaders: {"profile-title": "From Remote"});
       expect(result.isRight(), true);
       result.match((l) {}, (r) {
         expect(r["profile-title"], equals("From Remote"));
@@ -290,10 +275,7 @@ void main() {
 
   group("profileOverride", () {
     test("enable-warp header sets chain-status and extra-security", () {
-      final result = ProfileParser.profileOverride(
-        populatedHeaders: {"enable-warp": "true"},
-        userOverride: null,
-      );
+      final result = ProfileParser.profileOverride(populatedHeaders: {"enable-warp": "true"}, userOverride: null);
       final decoded = jsonDecode(result) as Map<String, dynamic>;
       expect(decoded["chain-status"], equals("extra_security"));
       expect(decoded["extra-security"], equals({"mode": "warp"}));

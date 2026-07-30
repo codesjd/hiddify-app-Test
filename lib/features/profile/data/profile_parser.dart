@@ -140,12 +140,10 @@ class ProfileParser {
   Either<ProfileFailure, ProfileEntriesCompanion> offlineUpdate({
     required ProfileEntity profile,
     required String tempFilePath,
-  }) => profile
-      .map(
-        remote: (rp) => parse(profile: rp, tempFilePath: tempFilePath),
-        local: (lp) => parse(tempFilePath: tempFilePath, profile: lp),
-      )
-      .flatMap((profEntity) => Either.tryCatch(() => profEntity.toUpdateEntry(), ProfileFailure.unexpected));
+  }) => switch (profile) {
+    RemoteProfileEntity rp => parse(profile: rp, tempFilePath: tempFilePath),
+    LocalProfileEntity lp => parse(tempFilePath: tempFilePath, profile: lp),
+  }.flatMap((profEntity) => Either.tryCatch(() => profEntity.toUpdateEntry(), ProfileFailure.unexpected));
 
   TaskEither<ProfileFailure, Map<String, dynamic>> _downloadProfile(
     String url,
@@ -374,10 +372,15 @@ class ProfileParser {
           }
         }
 
-        return profile.map(
-          remote: (rp) => rp.copyWith(name: name, lastUpdate: DateTime.now(), options: options, subInfo: subInfo),
-          local: (lp) => lp.copyWith(name: name, lastUpdate: DateTime.now()),
-        );
+        return switch (profile) {
+          RemoteProfileEntity rp => rp.copyWith(
+            name: name,
+            lastUpdate: DateTime.now(),
+            options: options,
+            subInfo: subInfo,
+          ),
+          LocalProfileEntity lp => lp.copyWith(name: name, lastUpdate: DateTime.now()),
+        };
       }, ProfileFailure.unexpected);
 
   static String protocol(String content) {
