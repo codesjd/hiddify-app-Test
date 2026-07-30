@@ -321,13 +321,20 @@ class HiddifyCoreService with InfraLogger {
   //
   // Stream<SingboxStatus> watchStatus() => _status;
 
-  ResponseStream<SystemInfo> watchStats() {
+  Stream<SystemInfo> watchStats() {
     loggy.debug("watching stats");
-    try {
-      return core.bgClient.getSystemInfoStream(Empty());
-    } catch (e) {
-      loggy.error("error watching stats: $e");
-      rethrow;
+    return Stream<void>.fromFuture(_waitUntilInitialized())
+        .asyncExpand((_) => core.bgClient.getSystemInfoStream(Empty()))
+        .handleError((Object e) {
+          loggy.error("error watching stats: $e");
+          throw e;
+        });
+  }
+
+  Future<void> _waitUntilInitialized() async {
+    while (!core.isInitialized()) {
+      loggy.debug("core is not initialized, waiting 500ms");
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
   }
 
