@@ -1,5 +1,10 @@
 // ignore_for_file: avoid_dynamic_calls
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hiddify/core/model/optional_range.dart';
+import 'package:hiddify/features/log/model/log_level.dart';
+import 'package:hiddify/features/settings/data/config_option_repository.dart';
+import 'package:hiddify/singbox/model/singbox_config_enum.dart';
+import 'package:hiddify/singbox/model/singbox_config_option.dart';
 
 /// Flattens a nested json map into dotted paths, e.g. {"a": {"b": 1}} -> {"a.b"}.
 Set<String> flattenKeys(Map<String, dynamic> json, [String prefix = ""]) {
@@ -15,73 +20,76 @@ Set<String> flattenKeys(Map<String, dynamic> json, [String prefix = ""]) {
   return keys;
 }
 
-/// Hand-maintained mirror of SingboxConfigOption's JSON key shape.
-/// Keep in sync with lib/singbox/model/singbox_config_option.dart.
-/// All values are placeholders — only the *keys* matter.
-const _wireModelJson = <String, dynamic>{
-  "region": "",
-  "balancer-strategy": "",
-  "use-xray-core-when-possible": false,
-  "execute-config-as-is": false,
-  "log-level": "",
-  "resolve-destination": false,
-  "ipv6-mode": "",
-  "remote-dns-address": "",
-  "remote-dns-domain-strategy": "",
-  "direct-dns-address": "",
-  "direct-dns-domain-strategy": "",
-  "mixed-port": 0,
-  "tproxy-port": 0,
-  "direct-port": 0,
-  "redirect-port": 0,
-  "enable-mixed-port": false,
-  "enable-tproxy-port": false,
-  "enable-direct-port": false,
-  "enable-redirect-port": false,
-  "tun-implementation": "",
-  "mtu": 0,
-  "strict-route": false,
-  "connection-test-url": "",
-  "url-test-interval": 0,
-  "enable-clash-api": false,
-  "clash-api-port": 0,
-  "enable-tun": false,
-  "set-system-proxy": false,
-  "allow-connection-from-lan": false,
-  "lan-sharing-password": "",
-  "enable-fake-dns": false,
-  "independent-dns-cache": false,
-  "route-rule": <String, dynamic>{},
-  "tls-tricks": <String, dynamic>{
-    "enable-fragment": false,
-    "fragment-size": "",
-    "fragment-sleep": "",
-    "mixed-sni-case": false,
-    "enable-padding": false,
-    "padding-size": "",
-  },
-  "chain-status": "",
-  "extra-security": <String, dynamic>{
-    "mode": "",
-    "warp": <String, dynamic>{"license-key": ""},
-    "psiphon": <String, dynamic>{"region": "", "conduit-pairing-id": ""},
-    "profile": <String, dynamic>{"id": ""},
-  },
-  "unblocker": <String, dynamic>{
-    "mode": "",
-    "warp": <String, dynamic>{
-      "license-key": "",
-      "clean-ip": "",
-      "clean-port": 0,
-      "noise": "",
-      "noise-size": "",
-      "noise-delay": "",
-      "noise-mode": "",
-    },
-    "psiphon": <String, dynamic>{"region": "", "conduit-pairing-id": ""},
-    "profile": <String, dynamic>{"id": ""},
-  },
-};
+/// A SingboxConfigOption built from real field values (any valid placeholder
+/// works, only the resulting JSON *keys* matter here) - its .toJson() is the
+/// actual, live wire-model key shape, not a hand-maintained copy of it, so
+/// this test tracks the real model automatically as it changes.
+SingboxConfigOption _placeholderConfigOption() {
+  return SingboxConfigOption(
+    region: "",
+    balancerStrategy: BalancerStrategy.values.first,
+    useXrayCoreWhenPossible: false,
+    executeConfigAsIs: false,
+    logLevel: LogLevel.values.first,
+    resolveDestination: false,
+    ipv6Mode: IPv6Mode.values.first,
+    remoteDnsAddress: "",
+    remoteDnsDomainStrategy: DomainStrategy.values.first,
+    directDnsAddress: "",
+    directDnsDomainStrategy: DomainStrategy.values.first,
+    mixedPort: 0,
+    tproxyPort: 0,
+    directPort: 0,
+    redirectPort: 0,
+    enableMixedPort: false,
+    enableTproxyPort: false,
+    enableDirectPort: false,
+    enableRedirectPort: false,
+    tunImplementation: TunImplementation.values.first,
+    mtu: 0,
+    strictRoute: false,
+    connectionTestUrl: "",
+    urlTestInterval: Duration.zero,
+    enableClashApi: false,
+    clashApiPort: 0,
+    enableTun: false,
+    setSystemProxy: false,
+    allowConnectionFromLan: false,
+    lanSharingPassword: "",
+    enableFakeDns: false,
+    independentDnsCache: false,
+    routeRule: const {},
+    tlsTricks: const SingboxTlsTricks(
+      enableFragment: false,
+      fragmentSize: OptionalRange(),
+      fragmentSleep: OptionalRange(),
+      mixedSniCase: false,
+      enablePadding: false,
+      paddingSize: OptionalRange(),
+    ),
+    chainStatus: ChainStatus.values.first,
+    extraSecurity: SingboxExtraSecurityOption(
+      mode: ChainMode.values.first,
+      warp: const SingboxExtraSecurityWarpOption(licenseKey: ""),
+      psiphon: SingboxExtraSecurityPsiphonOption(region: PsiphonRegion.values.first, conduitPairingId: ""),
+      profile: const SingboxExtraSecurityProfileOption(id: null),
+    ),
+    unblocker: SingboxUnblockerOption(
+      mode: ChainMode.values.first,
+      warp: const SingboxUnblockerWarpOption(
+        licenseKey: "",
+        cleanIp: "",
+        cleanPort: 0,
+        noise: OptionalRange(),
+        noiseSize: OptionalRange(),
+        noiseDelay: OptionalRange(),
+        noiseMode: "",
+      ),
+      psiphon: SingboxUnblockerPsiphonOption(region: PsiphonRegion.values.first, conduitPairingId: ""),
+      profile: const SingboxUnblockerProfileOption(id: null),
+    ),
+  );
+}
 
 /// Keys in ConfigOptions.preferences that are intentionally NOT in the wire
 /// model (they are app-layer only, not sent to the core).
@@ -93,70 +101,16 @@ const _appOnlyKeys = <String>{
 void main() {
   group("ConfigOptions.preferences", () {
     test("Should only contain keys that exist in the wire model (or are app-only)", () {
-      final modelKeys = flattenKeys(_wireModelJson);
-      // These keys live in preferences but are deliberately absent from the
-      // wire model. Add here only with a comment explaining why.
-      final registered = <String>{
-        "region",
-        "balancer-strategy",
-        "use-xray-core-when-possible",
-        "service-mode", // app-only
-        "log-level",
-        "resolve-destination",
-        "ipv6-mode",
-        "remote-dns-address",
-        "remote-dns-domain-strategy",
-        "direct-dns-address",
-        "direct-dns-domain-strategy",
-        "mixed-port",
-        "tproxy-port",
-        "direct-port",
-        "redirect-port",
-        "enable-mixed-port",
-        "enable-tproxy-port",
-        "enable-direct-port",
-        "enable-redirect-port",
-        "tun-implementation",
-        "mtu",
-        "strict-route",
-        "connection-test-url",
-        "url-test-interval",
-        "enable-clash-api",
-        "clash-api-port",
-        "allow-connection-from-lan",
-        "lan-sharing-password",
-        "enable-fake-dns",
-        "independent-dns-cache",
-        "tls-tricks.enable-fragment",
-        "tls-tricks.fragment-size",
-        "tls-tricks.fragment-sleep",
-        "tls-tricks.mixed-sni-case",
-        "tls-tricks.enable-padding",
-        "tls-tricks.padding-size",
-        "chain-status",
-        "extra-security.mode",
-        "extra-security.warp.license-key",
-        "extra-security.psiphon.region",
-        "extra-security.psiphon.conduit-pairing-id",
-        "extra-security.profile.id",
-        "unblocker.mode",
-        "unblocker.warp.license-key",
-        "unblocker.warp.clean-ip",
-        "unblocker.warp.clean-port",
-        "unblocker.warp.noise",
-        "unblocker.warp.noise-size",
-        "unblocker.warp.noise-mode",
-        "unblocker.warp.noise-delay",
-        "unblocker.psiphon.region",
-        "unblocker.psiphon.conduit-pairing-id",
-        "unblocker.profile.id",
-      };
+      final modelKeys = flattenKeys(_placeholderConfigOption().toJson());
+      final registered = ConfigOptions.preferences.keys.toSet();
 
       final orphaned = registered.difference(modelKeys).difference(_appOnlyKeys);
       expect(
         orphaned,
         isEmpty,
-        reason: "these preference paths have no field in SingboxConfigOption: $orphaned",
+        reason:
+            "these preference paths have no field in SingboxConfigOption (real .toJson() output): $orphaned. "
+            "Either the preference key is wrong/stale, or it needs adding to _appOnlyKeys with a reason.",
       );
     });
   });
