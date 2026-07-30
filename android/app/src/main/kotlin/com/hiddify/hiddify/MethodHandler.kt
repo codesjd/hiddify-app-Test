@@ -83,6 +83,7 @@ class MethodHandler(private val scope: CoroutineScope) : FlutterPlugin,
                         Settings.debugMode = args["debug"] as Boolean? ?: false
                         val mode = args["mode"] as Int
                         val grpcPort = args["grpcPort"] as Int
+                        val secret = args["secret"] as String? ?: ""
                         Log.d("debugmode","${Settings.debugMode}")
                         runCatching {
                             Mobile.setup(
@@ -93,7 +94,7 @@ class MethodHandler(private val scope: CoroutineScope) : FlutterPlugin,
                                     it.fixAndroidStack = Bugs.fixAndroidStack
                                     it.mode=mode.toLong()
                                     it.listen= "127.0.0.1:" + grpcPort
-                                    it.secret=""
+                                    it.secret = secret
                                     it.debug = Settings.debugMode
                                 },null)
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:basic_utils/basic_utils.dart';
 import 'package:flutter/services.dart';
@@ -31,6 +32,16 @@ class CoreInterfaceMobile extends CoreInterface with InfraLogger {
   static const portBack = 17079;
   static const portFront = 17078;
 
+  // ponytail: duplicated from CoreInterfaceDesktop rather than extracted to a shared helper -
+  // it's a 4-line static method, not worth a shared-file refactor for this plan's scope.
+  static String generateRandomPassword(int length) {
+    const characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random();
+    return List.generate(length, (_) => characters[random.nextInt(characters.length)]).join();
+  }
+
+  static final String secret = generateRandomPassword(100);
+
   bool _isBgClientAvailable = false;
   bool _debug = false;
 
@@ -47,6 +58,7 @@ class CoreInterfaceMobile extends CoreInterface with InfraLogger {
         port: portFront,
         options: ChannelOptions(credentials: channelOption),
       ),
+      options: CallOptions(metadata: {'secret': secret}),
     );
     final status = statusChannel.receiveBroadcastStream().map(CoreStatus.fromEvent);
     final alerts = alertsChannel.receiveBroadcastStream().map(CoreStatus.fromEvent);
@@ -65,6 +77,7 @@ class CoreInterfaceMobile extends CoreInterface with InfraLogger {
         "grpcPort": portFront,
         "mode": mode,
         "debug": debug,
+        "secret": secret,
       });
       final res = await helloClient.sayHello(HelloRequest(name: "test"));
       loggy.info(res.toString());
@@ -87,6 +100,7 @@ class CoreInterfaceMobile extends CoreInterface with InfraLogger {
         port: portFront,
         options: ChannelOptions(credentials: channelOption),
       ),
+      options: CallOptions(metadata: {'secret': secret}),
     );
 
     bgClient = CoreClient(
@@ -95,6 +109,7 @@ class CoreInterfaceMobile extends CoreInterface with InfraLogger {
         port: portBack,
         options: ChannelOptions(credentials: channelOption),
       ),
+      options: CallOptions(metadata: {'secret': secret}),
     );
     // await start("/sdcard/Android/data/app.hiddify.com/files/configs/cdc633e9-8cfc-4a67-948d-009f779a5c91.json", "hiddify");
     return "";
