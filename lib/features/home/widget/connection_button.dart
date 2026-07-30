@@ -27,8 +27,7 @@ class ConnectionButton extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider).requireValue;
     final connectionStatus = ref.watch(connectionNotifierProvider);
-    final activeProxy = ref.watch(activeProxyNotifierProvider);
-    final delay = activeProxy.valueOrNull?.urlTestDelay ?? 0;
+    final delay = ref.watch(activeProxyNotifierProvider.select((value) => value.valueOrNull?.urlTestDelay)) ?? 0;
 
     final requiresReconnect = ref.watch(configOptionNotifierProvider).valueOrNull;
     final today = DateTime.now();

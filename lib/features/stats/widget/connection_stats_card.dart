@@ -14,31 +14,35 @@ class ConnectionStatsCard extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider).requireValue;
 
-    final activeProxy = ref.watch(activeProxyNotifierProvider);
+    final activeProxy = ref.watch(
+      activeProxyNotifierProvider.select(
+        (value) => (tagDisplay: value.valueOrNull?.tagDisplay, ipinfo: value.valueOrNull?.ipinfo),
+      ),
+    );
     // final ipInfo = ref.watch(ipInfoNotifierProvider);
 
     return StatsCard(
       title: t.components.stats.connection,
       stats: [
         switch (activeProxy) {
-          AsyncData(value: final proxy) => (
+          (tagDisplay: final String tagDisplay, ipinfo: _) => (
             label: const Icon(FluentIcons.arrow_routing_20_regular),
-            data: Text(proxy.tagDisplay),
+            data: Text(tagDisplay),
             semanticLabel: null,
           ),
           _ => (label: const Icon(FluentIcons.arrow_routing_20_regular), data: const Text("..."), semanticLabel: null),
         },
         switch (activeProxy) {
-          AsyncData(value: final proxy) when proxy.ipinfo.ip.isNotEmpty => (
+          (tagDisplay: _, ipinfo: final ipinfo?) when ipinfo.ip.isNotEmpty => (
             label: Row(
               children: [
-                IPCountryFlag(countryCode: proxy.ipinfo.countryCode, size: 16),
+                IPCountryFlag(countryCode: ipinfo.countryCode, size: 16),
                 // const Gap(4),
                 // OrganisationFlag(organization: proxy.ipinfo.org, size: 16),
               ],
             ),
             data: IPText(
-              ip: proxy.ipinfo.ip,
+              ip: ipinfo.ip,
               onLongPress: () async {
                 ref.read(ipInfoNotifierProvider.notifier).refresh();
               },
