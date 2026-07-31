@@ -88,8 +88,63 @@ row when done.
 | 037 | Investigate: `hcore`'s sing-box abstraction boundary (spike, no code change) | P3 | S–M | — | DONE — hiddify-core/docs/hcore-abstraction-boundary-spike.md; classified 17 files (drift from the plan's recorded 11), recommends deferring a full adapter interface in favor of extracting pure functions from proxy_info.go/commands.go |
 | 038 | Document the `hiddify-sing-box` fork's basis vs. upstream | P3 | S | — | DONE — Fork basis section added to hiddify-sing-box/README.md (commit `9f155483` inside that nested submodule only, per the plan's own instruction not to guess how outer submodule pointers should propagate — not pushed, not reflected in hiddify-core's tracked commit) |
 
+| 039 | Make TUN mode's Windows/Linux privilege-elevation path actually run | P0 | M | — | DONE — executed 2026-07-31 on `hiddify-core` branch `advisor/tun-icmp-fixes` (commits be780fd, 3d8286f, d871fa6, eae22c1, not pushed/merged). Reviewed: build/vet/test independently re-run and passing, scope clean (6 files, all in-scope). Executor caught and fixed one bug beyond the plan's literal diff: `loadExtension`'s own `isEnable` re-check would have made `AlwaysEnabled` extensions fail to load and broken `StartServices()` for every service, not just this one — fixed in the same file, within Step 1's declared intent. |
+| 040 | Give xicmp's elevated ICMP helper enough time for a human to click through UAC | P1 | S | — | DONE — executed 2026-07-31, same branch (commits 0895238, 7e07789). Reviewed: build/vet/test independently re-run and passing, scope clean (3 files). Step 2 (idle-timeout bump) deliberately skipped per the plan's own "use judgment" clause. |
+| 041 | Investigate: how should macOS get TUN privilege elevation? (spike, no code change) | P2 | S–M | 039 (recommended context) | DONE — executed 2026-07-31, same branch (commit e8e6fad). Spike doc at `hiddify-core/docs/macos-tun-elevation-spike.md`, all 4 required sections present, every claim re-verified (one correction found: `darwin_utils.go` does exist but only handles crash-output redirection, doesn't affect the plan's conclusion). Traced the exact current failure path in detail: TUN is selectable on macOS with no gate, and fails with an opaque "service is not running" rather than a real explanation. |
+| 042 | TUN robustness follow-ups — explicit interface name and Stack validation at the config-import boundary | P3 | S | — | DONE — executed 2026-07-31, same branch (commit feda7e5). Reviewed: build/test independently re-run and passing, scope clean (2 files). Used the plan's preferred option (return an error from `setInbound`, matching the file's own mixed error-returning convention) rather than the log+fallback alternative. |
+
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale).
+
+## Fourth pass: TUN mode / xicmp investigation (2026-07-31)
+
+User-reported: "TUN mode doesn't work properly or doesn't work at all" and
+"xicmp doesn't work." Investigated via two parallel deep-dive subagents
+(one per subsystem) plus direct verification of every cited claim against
+live code before writing plans 039-042 — same standing rule as the Go-core
+pass: excerpts in plans come from a direct read, not taken verbatim from a
+subagent's report. One subagent mis-attributed a finding to
+`independent_instance.go` that actually lives in `restart.go` — caught
+during verification, corrected in plan 042's "out of scope" note.
+
+**TUN mode root cause (plan 039, P0, high confidence)**: a fully-built
+elevated-helper architecture for handing TUN adapter creation to an
+already-authenticated privileged process (`hiddify-core/v2/hcore/tunnelservice/`,
+port 18020, token-authed since plan 019) is never invoked, on any desktop
+platform, because of three independent breaks: (1) the extension framework
+that bridges `hcore` to `tunnelservice` — needed specifically to avoid an
+import cycle (`tunnelservice` imports `hcore`, so `hcore` cannot import
+`tunnelservice` directly, unlike the ICMP case) — has its registration
+commented out (`extension/interface.go:125`); (2) even with that fixed, the
+bridge code checks for a `C.TypeSOCKS` inbound that `builder.go` never
+emits (it emits `C.TypeMixed`); (3) even with both fixed, nothing imports
+the package containing the bridge, so its `init()` never runs. TUN only
+works today if the process happens to already be elevated — explaining the
+"inconsistent" symptom (Android is unaffected; it uses an unrelated,
+working OS-level `VpnService` consent flow instead of any of this).
+
+**xicmp (plan 040, P1)**: reachability and Windows elevation wiring are
+both confirmed live and correct (`icmp_wiring.go`, called unconditionally
+from `StartService` — this is the already-fixed precedent plan 039 follows
+for TUN). Two real timing bugs found: the elevated helper is given only 5
+seconds to become reachable after firing a UAC prompt (not enough time for
+a human to notice and click through it), and the helper's 8-minute
+idle-timeout means a UAC re-prompt on every xicmp dial after 8+ minutes of
+inactivity, contradicting its own code comment's "only elevates the first
+time" claim.
+
+**macOS TUN (plan 041, P2, spike)**: no privilege-elevation path exists at
+all — no NetworkExtension entitlements enabled, no privileged-helper-tool
+code, no `darwin_utils.go` equivalent of Windows's/Linux's capability
+checks. Needs a product decision (NetworkExtension system extension vs. a
+Windows-style privileged helper vs. accepting TUN as unsupported on macOS)
+before code gets written.
+
+**Minor TUN robustness (plan 042, P3)**: the TUN inbound never gets an
+explicit interface name (diagnostics-only concern), and `TUNStack` reaches
+`sing-tun` with no validation — a non-issue via the app's own UI (a closed
+3-value Dart enum), but a real gap at the config-option JSON import
+boundary.
 
 ## New findings surfaced while executing plans 018-038 (2026-07-30)
 
