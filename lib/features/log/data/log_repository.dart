@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import 'package:fpdart/fpdart.dart';
 import 'package:hiddify/core/utils/exception_handler.dart';
 import 'package:hiddify/features/log/data/log_parser.dart';
@@ -7,6 +8,7 @@ import 'package:hiddify/features/log/model/log_entity.dart';
 import 'package:hiddify/features/log/model/log_failure.dart';
 import 'package:hiddify/hiddifycore/hiddify_core_service.dart';
 import 'package:hiddify/utils/custom_loggers.dart';
+import 'package:rxdart/rxdart.dart';
 
 abstract interface class LogRepository {
   TaskEither<LogFailure, Unit> init();
@@ -44,9 +46,10 @@ class LogRepositoryImpl with ExceptionHandler, InfraLogger implements LogReposit
 
   @override
   Stream<Either<LogFailure, List<LogEntity>>> watchLogs() {
-    return singbox
-        .watchLogs(logPathResolver.coreFile().path)
-        .map((event) => event.map(LogParser.parseLogProto).toList())
+    return (() => singbox
+            .watchLogs(logPathResolver.coreFile().path)
+            .throttleTime(const Duration(milliseconds: 250), leading: true, trailing: true)
+            .map((event) => event.map(LogParser.parseLogProto).toList()))
         .handleExceptions((error, stackTrace) {
           loggy.warning("error watching logs", error, stackTrace);
           return LogFailure.unexpected(error, stackTrace);

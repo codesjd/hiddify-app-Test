@@ -83,6 +83,7 @@ class MethodHandler(private val scope: CoroutineScope) : FlutterPlugin,
                         Settings.debugMode = args["debug"] as Boolean? ?: false
                         val mode = args["mode"] as Int
                         val grpcPort = args["grpcPort"] as Int
+                        val secret = args["secret"] as String? ?: ""
                         Log.d("debugmode","${Settings.debugMode}")
                         runCatching {
                             Mobile.setup(
@@ -93,12 +94,14 @@ class MethodHandler(private val scope: CoroutineScope) : FlutterPlugin,
                                     it.fixAndroidStack = Bugs.fixAndroidStack
                                     it.mode=mode.toLong()
                                     it.listen= "127.0.0.1:" + grpcPort
-                                    it.secret=""
+                                    it.secret = secret
                                     it.debug = Settings.debugMode
                                 },null)
 
 //                            Libbox.setup(Settings.baseDir, Settings.workingDir, Settings.tempDir, false)
-                            Libbox.redirectStderr(File(Settings.workingDir, "stderr2.log").path)
+                            // Libbox.RedirectStderr was removed upstream; hiddify-core now redirects
+                            // stderr internally (hutils.RedirectStderr, called from grpc_server.go)
+                            // as part of its own setup, so there's nothing left for the app to call here.
 
                             success("")
                         }.onFailure {

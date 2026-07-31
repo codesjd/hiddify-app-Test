@@ -82,9 +82,9 @@ public class MethodHandler: NSObject, FlutterPlugin {
                     opts.workingDir = workingDir
                     opts.tempDir = tempDir
                     opts.listen = "127.0.0.1:\(grpcPort)"
-                    opts.secret = ""
+                    opts.secret = (args["secret"] as? String) ?? ""
                     opts.debug = false
-                    opts.mode = 4
+                    opts.mode = Int64(mode)
                     opts.fixAndroidStack = false
                     MobileSetup(opts,
                         nil,

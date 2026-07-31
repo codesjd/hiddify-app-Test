@@ -29,19 +29,16 @@ When contributing a complex change to the Hiddify repository, please discuss the
 ## Development
 
 ### Adding Feature / Fix bug in Core:
-Please follow our [Go Core Development repository](https://github.com/hiddify/hiddify-next-core/main/CONTRIBUTING.m).
+Please follow our [Go Core Development repository](https://github.com/hiddify/hiddify-core/blob/main/CONTRIBUTING.md).
 
 ### Working with the Flutter Code
-Hiddify uses [Flutter](https://flutter.dev), make sure that you have the correct version installed before starting development. You can use the following commands to check your installed version:
+Hiddify uses [Flutter](https://flutter.dev), make sure that you have at least
+the version required by `pubspec.yaml` installed before starting development
+(check the `environment:`/`flutter:` constraint there for the exact minimum).
+You can check your installed version with:
 
 ```shell
 $ flutter --version
-
-# example response
-Flutter 3.13.4 • channel stable • https://github.com/flutter/flutter.git
-Framework • revision 367f9ea16b (4 weeks ago) • 2023-09-12 23:27:53 -0500
-Engine • revision 9064459a8b
-Tools • Dart 3.1.2 • DevTools 2.25.0
 ```
 
 
@@ -50,8 +47,17 @@ We recommend using [Visual Studio Code](https://docs.flutter.dev/development/too
 #### Setting up the Environment
 
 We have extensive use of code generation in the form of [freezed](https://github.com/rrousselGit/freezed), [riverpod](https://github.com/rrousselGit/riverpod), etc. So it's generate these before running the code. Execute the following make commands in order:
-Assuming you have not built the `hiddify-core` and want to use [existing releases](https://github.com/hiddify/hiddify-next-core/releases), you should run the following command (based on your target platform):
+Assuming you have not built the `hiddify-core` and want to use [existing releases](https://github.com/hiddify/hiddify-core/releases), you should run the following command (based on your target platform):
 
+Before building, initialize the `hiddify-core` git submodule (only needed
+once, or after switching branches that reference a different submodule
+commit):
+
+    git submodule update --init --recursive
+
+Then run the following make command for your target platform (running
+`make prepare` on its own only prints this list — it does not build
+anything itself):
 
 - `make windows-prepare`
 - `make linux-prepare` 
@@ -93,7 +99,7 @@ flutter run --device-id=35492ae2
 
 ## Release
 
-We use [flutter_distributor](https://github.com/leanflutter/flutter_distributor) for packaging. [GitHub action](https://github.com/hiddify/hiddify-app/blob/main/.github/workflows/build.yml) is triggered on every release tag and will create a new GitHub release.
+We use [fastforge](https://github.com/leanflutter/fastforge) for packaging.
 After setting up the environment, use the following make commands to build the release version:
 
 - `make windows-release`

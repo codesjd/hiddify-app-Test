@@ -1,10 +1,9 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:hiddify/singbox/model/singbox_proxy_type.dart';
 
 part 'proxy_entity.freezed.dart';
 
 @freezed
-class ProxyGroupEntity with _$ProxyGroupEntity {
+abstract class ProxyGroupEntity with _$ProxyGroupEntity {
   const ProxyGroupEntity._();
 
   const factory ProxyGroupEntity({
@@ -18,7 +17,7 @@ class ProxyGroupEntity with _$ProxyGroupEntity {
 }
 
 @freezed
-class ProxyItemEntity with _$ProxyItemEntity {
+abstract class ProxyItemEntity with _$ProxyItemEntity {
   const ProxyItemEntity._();
 
   const factory ProxyItemEntity({

@@ -75,6 +75,30 @@ gen:
 translate:
 	dart run slang
 
+# Codegen without downloading platform native libs - enough to analyze and test.
+verify-prepare: get gen translate
+
+# ponytail: analyzer_plugin override in pubspec.yaml keeps build_runner compatible
+# with analyzer 7.x until upstream dependency constraints catch up.
+
+analyze: verify-prepare
+	flutter analyze
+	# dart run custom_lint  # blocked until custom_lint is compatible with build_runner
+
+# ponytail: same exclude list as analysis_options.yaml — generated code is
+# reformatted by its own generator, not us; checking it here just chases
+# whatever formatter version build_runner/protoc happen to bundle.
+format-check:
+	find lib test -name '*.dart' \
+		-not -name '*.g.dart' -not -name '*.freezed.dart' -not -name '*.mapper.dart' \
+		-not -path 'lib/gen/*' -not -path 'lib/hiddifycore/generated/*' -print0 \
+		| xargs -0 dart format --set-exit-if-changed --line-length 120
+
+test: verify-prepare
+	flutter test
+
+check: analyze format-check test
+
 
 
 prepare:
@@ -466,7 +490,7 @@ ios-release: #not tested
 
 android-libs:
 	$(MKDIR) $(ANDROID_OUT) || echo Folder already exists. Skipping...
-	curl -L $(CORE_URL)/$(CORE_NAME)-android.tar.gz | tar xz -C $(ANDROID_OUT)/
+	make build-android-libs
 
 android-apk-libs: android-libs
 android-aab-libs: android-libs

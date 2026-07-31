@@ -5,6 +5,12 @@ on:
       upload-artifact:
         type: boolean
         default: true
+      upload-pr-artifact:
+        # Uploads the unsigned build output as a short-lived Actions artifact for PR review,
+        # without touching upload-artifact's much wider blast radius (code-signing setup for
+        # macOS/Android/Windows, GitHub Release publishing) - PR builds should stay signing-free.
+        type: boolean
+        default: false
       tag-name:
         type: string
         default: "draft"
@@ -47,7 +53,13 @@ jobs:
           cache: true
           
       - name: Prepare
-        run: make linux-amd64-prepare
+        run: make verify-prepare
+      - name: Analyze
+        run: make analyze
+        continue-on-error: true   # remove once the backlog is cleared
+      - name: Format check
+        run: make format-check
+        continue-on-error: true   # remove once formatting is normalized
       - name: Test
         run: flutter test
 
@@ -56,8 +68,47 @@ jobs:
         run: echo "::set-output name=datetime::$(date +'%d.%H.%M')"
 
 
+  # windows-libs (in the Makefile) downloads a prebuilt hiddify-core.dll from upstream
+  # hiddify/hiddify-core's release, which predates this fork's AnyTLS/pcs/embedded-xray-core
+  # changes and drifts from the current libbox interface - same stale-binary problem that
+  # core-source-build/android-libs above already fixed for the other platforms. hiddify-core's own
+  # windows-amd64 Makefile target refuses to run on native Windows (`ifeq ($(OS),Windows_NT)`), so
+  # it's cross-compiled here from Linux with a mingw-w64 toolchain, mirroring hiddify-core's own
+  # CI, and handed to the windows job below as an artifact instead.
+  build-core-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: hiddify-core/go.mod
+          cache-dependency-path: hiddify-core/go.sum
+
+      - name: Setup MinGW
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+
+      - name: Build hiddify-core for Windows
+        run: make -C hiddify-core -f Makefile windows-amd64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hiddify-core-windows-amd64
+          path: |
+            hiddify-core/bin/hiddify-core.dll
+            hiddify-core/bin/HiddifyCli.exe
+            hiddify-core/bin/libcronet.dll
+          retention-days: 1
+          if-no-files-found: warn
+
   build:
-    needs: test
+    needs: [test, build-core-windows]
     permissions: write-all
     continue-on-error: true
 
@@ -65,23 +116,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: android-apk
-            os: ubuntu-latest
-            targets: apk
+          # Temporarily narrowed to Windows-only while debugging a config-parsing/core-startup
+          # issue reported on the Windows build - re-enable the other platforms below once that's
+          # resolved.
+          # - platform: android-apk
+          #   os: ubuntu-latest
+          #   targets: apk
 
-          - platform: android-aab
-            os: ubuntu-latest
-            targets: aab
+          # - platform: android-aab
+          #   os: ubuntu-latest
+          #   targets: aab
 
           - platform: windows
             os: windows-latest
             aarch: amd64
             targets: exe,msix,zip
 
-          - platform: linux
-            os: ubuntu-22.04
-            aarch: amd64
-            targets: deb,gz,AppImage
+          # - platform: linux
+          #   os: ubuntu-22.04
+          #   aarch: amd64
+          #   targets: deb,gz,AppImage
 
           # - platform: linux-amd64
           #   os: ubuntu-22.04
@@ -102,12 +156,12 @@ jobs:
           #   os: ubuntu-24.04-arm
           #   aarch: arm64
           #   targets: deb,gz
-            
-          - platform: macos
-            os: macos-15
-            aarch: universal
-            targets: dmg,pkg
-            
+
+          # - platform: macos
+          #   os: macos-15
+          #   aarch: universal
+          #   targets: dmg,pkg
+
           # - platform: ios
           #   os: macos-15
           #   aarch: universal
@@ -117,6 +171,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v6
+        with:
+          submodules: ${{ startsWith(matrix.platform,'android') && 'recursive' || 'false' }}
 
       - name: Import Apple Codesign Certificates
         if: ${{ inputs.upload-artifact && startsWith(matrix.os,'macos') }}
@@ -178,14 +234,25 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: 17
-      # - name: Setup NDK
-      #   if: startsWith(matrix.platform,'android')
-      #   uses: nttld/setup-ndk@v1
-      #   id: setup-ndk
-      #   with:
-      #     ndk-version: ${{ env.NDK_VERSION }}
-      #     add-to-path: true
-      #     link-to-sdk: true
+
+      # hiddify-core (the Go core, checked out above via submodules: recursive) is compiled from
+      # source into the Android AAR here rather than downloaded prebuilt - see android-libs in the
+      # Makefile. That needs a matching Go toolchain plus the NDK gomobile bind cross-compiles with.
+      - name: Setup Go
+        if: startsWith(matrix.platform,'android')
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: hiddify-core/go.mod
+          cache-dependency-path: hiddify-core/go.sum
+
+      - name: Setup NDK
+        if: startsWith(matrix.platform,'android')
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          add-to-path: true
+          link-to-sdk: true
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -225,12 +292,30 @@ jobs:
           echo "keyPassword=${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}" >> android/key.properties
 
+      # msix packaging (make windows-msix-release, part of make windows-release below) fails
+      # outright if windows\sign.pfx doesn't exist, even for a build that was never going to be
+      # signed or distributed (e.g. a PR check). When the real signing secret isn't configured -
+      # true for any fork without it - fall back to a throwaway self-signed cert so packaging can
+      # still succeed; the resulting msix is unsigned/untrusted but that's fine for CI verification.
+      # Real releases (upload-artifact + a configured WINDOWS_SIGNING_KEY) still use the real cert.
       - name: Setup Windows Signing Properties
-        if: ${{ inputs.upload-artifact && startsWith(matrix.platform,'windows') }}
+        if: ${{ startsWith(matrix.platform,'windows') }}
         run: |
-            [IO.File]::WriteAllBytes("windows\sign.pfx", [Convert]::FromBase64String("${{ secrets.WINDOWS_SIGNING_KEY }}"))
-            (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}' | Set-Content "windows\packaging\msix\make_config.yaml"
-        
+            if ("${{ secrets.WINDOWS_SIGNING_KEY }}" -ne "") {
+              [IO.File]::WriteAllBytes("windows\sign.pfx", [Convert]::FromBase64String("${{ secrets.WINDOWS_SIGNING_KEY }}"))
+              (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}' | Set-Content "windows\packaging\msix\make_config.yaml"
+            } else {
+              Write-Host "WINDOWS_SIGNING_KEY not set - generating a throwaway self-signed certificate so msix packaging can proceed unsigned."
+              # MSIX signing requires the certificate's Subject to exactly match the package's
+              # `publisher` identity in make_config.yaml, or SignTool rejects it - so read that
+              # value instead of hardcoding a Subject that won't match.
+              $publisher = (Select-String -Path "windows\packaging\msix\make_config.yaml" -Pattern '^publisher:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
+              $cert = New-SelfSignedCertificate -Type Custom -Subject $publisher -KeyUsage DigitalSignature -FriendlyName "Hiddify CI" -CertStoreLocation "Cert:\CurrentUser\My" -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3")
+              $certPassword = ConvertTo-SecureString -String "hiddifyci" -Force -AsPlainText
+              Export-PfxCertificate -Cert $cert -FilePath "windows\sign.pfx" -Password $certPassword | Out-Null
+              (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: hiddifyci' | Set-Content "windows\packaging\msix\make_config.yaml"
+            }
+
       # - name: Temporary disable Permission Handler for windows due to its issue in permission
       #   if: ${{ startsWith(matrix.platform,'windows') }}
       #   run: |
@@ -242,7 +327,23 @@ jobs:
 
 
 
+      - name: Download Windows core artifact
+        if: matrix.platform == 'windows'
+        uses: actions/download-artifact@v4
+        with:
+          name: hiddify-core-windows-amd64
+          path: hiddify-core/bin
+
+      # windows-prepare would otherwise call windows-libs and overwrite the from-source DLL just
+      # downloaded above with upstream's prebuilt one - run common-prepare directly instead.
+      - name: Prepare for windows
+        if: matrix.platform == 'windows'
+        run: make common-prepare
+
       - name: Prepare for ${{ matrix.platform }}
+        if: matrix.platform != 'windows'
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
           make ${{ matrix.platform }}-prepare
 
@@ -350,7 +451,7 @@ jobs:
           done
 
       - name: Upload Artifact
-        if: env.UPLOAD_ARTIFACT == 'true'
+        if: ${{ env.UPLOAD_ARTIFACT == 'true' || inputs.upload-pr-artifact }}
         uses: actions/upload-artifact@v6
         with:
           name: ${{matrix.platform}}

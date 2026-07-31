@@ -5,7 +5,7 @@ part 'mutation_state.freezed.dart';
 
 // TODO: remove
 @freezed
-class MutationState<F extends Failure> with _$MutationState<F> {
+abstract class MutationState<F extends Failure> with _$MutationState<F> {
   const MutationState._();
 
   const factory MutationState.initial() = MutationInitial<F>;

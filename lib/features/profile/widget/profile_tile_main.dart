@@ -76,7 +76,7 @@ class ProfileTileMain extends HookConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer.withOpacity(0.1),
+                      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(FluentIcons.arrow_sync_24_filled, color: theme.colorScheme.primary, size: 20),
@@ -93,7 +93,7 @@ class ProfileTileMain extends HookConsumerWidget {
             ),
           ),
           if (subInfo != null)
-            Container(
+            SizedBox(
               width: 350,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -102,7 +102,7 @@ class ProfileTileMain extends HookConsumerWidget {
                     // Add this to ensure equal height
                     child: Row(
                       children: [
-                        if (subInfo.total > 0) _BandwithUsageRow(subInfo),
+                        if (subInfo.total > 0) _bandwithUsageRow(subInfo),
 
                         // if (subInfo.total > 0 && subInfo.remaining.inDays > 0)
                         //   const VerticalDivider(
@@ -125,7 +125,7 @@ class ProfileTileMain extends HookConsumerWidget {
                       ],
                     ),
                   ),
-                  if ((subInfo.webPageUrl != null || subInfo.supportUrl != null))
+                  if (subInfo.webPageUrl != null || subInfo.supportUrl != null)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Row(
@@ -149,7 +149,7 @@ class ProfileTileMain extends HookConsumerWidget {
                                 onTap: () => _launchUrlWithCheck(context, ref, subInfo.supportUrl!),
                                 borderRadius: BorderRadius.circular(8),
                                 child: _InfoItem(
-                                  icon: _getLinkIcon(subInfo.supportUrl!, FontAwesomeIcons.headset),
+                                  icon: _getLinkIcon(subInfo.supportUrl!, FontAwesomeIcons.headset.data),
                                   label: t.components.subscriptionInfo.profileSupport,
                                   value: _formatSupportLink(subInfo.supportUrl!),
                                 ),
@@ -172,16 +172,16 @@ class ProfileTileMain extends HookConsumerWidget {
     final host = uri.host.toLowerCase();
 
     if (host.endsWith('telegram.me') || host.endsWith('t.me')) {
-      return FontAwesomeIcons.telegram;
+      return FontAwesomeIcons.telegram.data;
     }
     if (host.endsWith('instagram.com')) {
-      return FontAwesomeIcons.instagram;
+      return FontAwesomeIcons.instagram.data;
     }
     if (host.endsWith('twitter.com')) {
-      return FontAwesomeIcons.xTwitter;
+      return FontAwesomeIcons.xTwitter.data;
     }
     if (host.endsWith('facebook.com')) {
-      return FontAwesomeIcons.facebook;
+      return FontAwesomeIcons.facebook.data;
     }
     if (host.endsWith('hiddify.com')) {
       // return IconData();
@@ -217,7 +217,7 @@ class ProfileTileMain extends HookConsumerWidget {
     return Colors.green;
   }
 
-  Widget _BandwithUsageRow(SubscriptionInfo subInfo) {
+  Widget _bandwithUsageRow(SubscriptionInfo subInfo) {
     return _UsageRow(
       icon: FluentIcons.data_usage_24_filled,
       title: subInfo.total.isInfinitSize() ? "∞ GB remaining" : "${subInfo.remainingBWratio * 100}% remaining",
@@ -255,7 +255,7 @@ class _UsageRow extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: progress,
-                      backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                       valueColor: AlwaysStoppedAnimation<Color>(color),
                       minHeight: 4,
                     ),
@@ -298,7 +298,7 @@ class _InfoItem extends StatelessWidget {
                 Text(
                   label,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                   ),
                 ),
                 Text(value, style: theme.textTheme.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dartx/dartx.dart';
-
 import 'package:hiddify/core/haptic/haptic_service.dart';
 import 'package:hiddify/core/localization/translations.dart';
 import 'package:hiddify/core/preferences/preferences_provider.dart';
@@ -10,10 +9,10 @@ import 'package:hiddify/features/connection/notifier/connection_notifier.dart';
 import 'package:hiddify/features/proxy/data/proxy_data_providers.dart';
 import 'package:hiddify/features/proxy/model/proxy_failure.dart';
 import 'package:hiddify/hiddifycore/generated/v2/hcore/hcore.pb.dart';
-
 import 'package:hiddify/utils/riverpod_utils.dart';
 import 'package:hiddify/utils/utils.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:rxdart/rxdart.dart';
 
 part 'proxies_overview_notifier.g.dart';
 
@@ -64,26 +63,10 @@ class ProxiesOverviewNotifier extends _$ProxiesOverviewNotifier with AppLogger {
       return Stream.error(const ServiceNotRunning());
     }
     final sortBy = ref.watch(proxiesSortNotifierProvider);
-    // yield* ref
-    //     .watch(proxyRepositoryProvider)
-    //     .watchProxies()
-    //     .throttleTime(
-    //       const Duration(milliseconds: 100),
-    //       leading: false,
-    //       trailing: true,
-    //     )
-    //     .map(
-    //       (event) => event.getOrElse(
-    //         (err) {
-    //           loggy.warning("error receiving proxies", err);
-    //           throw err;
-    //         },
-    //       ),
-    //     )
-    //     .asyncMap((proxies) async => _sortOutbounds(proxies, sortBy));
     return ref
         .watch(proxyRepositoryProvider)
         .watchProxies()
+        .throttleTime(const Duration(milliseconds: 250), leading: true, trailing: true)
         .map(
           (event) => event.getOrElse((err) {
             loggy.warning("error receiving proxies", err);

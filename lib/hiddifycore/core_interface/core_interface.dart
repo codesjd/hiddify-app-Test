@@ -45,6 +45,7 @@ class CoreInterface {
 
   bool isInitialized() {
     try {
+      // ignore: unnecessary_statements
       bgClient; // touch it
       return true;
     } catch (_) {

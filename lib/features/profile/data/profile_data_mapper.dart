@@ -5,8 +5,8 @@ import 'package:hiddify/core/db/db.dart';
 import 'package:hiddify/features/profile/model/profile_entity.dart';
 
 extension ProfileEntityMapper on ProfileEntity {
-  ProfileEntriesCompanion toInsertEntry() => map(
-    remote: (rp) => ProfileEntriesCompanion.insert(
+  ProfileEntriesCompanion toInsertEntry() => switch (this) {
+    final RemoteProfileEntity rp => ProfileEntriesCompanion.insert(
       id: rp.id,
       type: ProfileType.remote,
       active: rp.active,
@@ -23,7 +23,7 @@ extension ProfileEntityMapper on ProfileEntity {
       webPageUrl: Value(rp.subInfo?.webPageUrl),
       supportUrl: Value(rp.subInfo?.supportUrl),
     ),
-    local: (lp) => ProfileEntriesCompanion.insert(
+    final LocalProfileEntity lp => ProfileEntriesCompanion.insert(
       id: lp.id,
       type: ProfileType.local,
       active: lp.active,
@@ -32,10 +32,10 @@ extension ProfileEntityMapper on ProfileEntity {
       populatedHeaders: Value(jsonEncode(lp.populatedHeaders)),
       userOverride: Value(lp.userOverride?.toStr()),
     ),
-  );
+  };
 
-  ProfileEntriesCompanion toUpdateEntry() => map(
-    remote: (rp) => ProfileEntriesCompanion(
+  ProfileEntriesCompanion toUpdateEntry() => switch (this) {
+    final RemoteProfileEntity rp => ProfileEntriesCompanion(
       name: Value(rp.name),
       lastUpdate: Value(rp.lastUpdate),
       updateInterval: Value(rp.options?.updateInterval),
@@ -48,13 +48,13 @@ extension ProfileEntityMapper on ProfileEntity {
       webPageUrl: Value(rp.subInfo?.webPageUrl),
       supportUrl: Value(rp.subInfo?.supportUrl),
     ),
-    local: (lp) => ProfileEntriesCompanion(
+    final LocalProfileEntity lp => ProfileEntriesCompanion(
       name: Value(lp.name),
       lastUpdate: Value(lp.lastUpdate),
       populatedHeaders: Value(jsonEncode(lp.populatedHeaders)),
       userOverride: Value(lp.userOverride?.toStr()),
     ),
-  );
+  };
 }
 
 extension ProfileEntryMapper on ProfileEntry {

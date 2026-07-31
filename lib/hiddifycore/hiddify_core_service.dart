@@ -1,32 +1,26 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:fpdart/fpdart.dart';
 import 'package:grpc/grpc.dart';
 import 'package:hiddify/core/directories/directories_provider.dart';
-import 'package:hiddify/core/model/directories.dart';
 import 'package:hiddify/core/notification/in_app_notification_controller.dart';
 import 'package:hiddify/core/preferences/general_preferences.dart';
 import 'package:hiddify/features/connection/model/connection_failure.dart';
+import 'package:hiddify/features/log/model/log_level.dart' as config_log_level;
 import 'package:hiddify/features/settings/data/config_option_repository.dart';
-import 'package:hiddify/hiddifycore/core_interface/core_interface.dart';
+import 'package:hiddify/hiddifycore/core_interface/core_interface_wrapper_stub.dart'
+    if (dart.library.io) 'package:hiddify/hiddifycore/core_interface/core_interface_wrapper.dart';
 import 'package:hiddify/hiddifycore/generated/v2/hcommon/common.pb.dart';
 import 'package:hiddify/hiddifycore/generated/v2/hcore/hcore.pb.dart';
 import 'package:hiddify/hiddifycore/generated/v2/hcore/hcore_service.pbgrpc.dart';
 import 'package:hiddify/hiddifycore/init_signal.dart';
-import 'package:hiddify/singbox/model/singbox_config_option.dart';
-import 'package:hiddify/features/log/model/log_level.dart' as config_log_level;
 import 'package:hiddify/singbox/model/core_status.dart';
-import 'package:hiddify/singbox/model/warp_account.dart';
-
-import 'package:hiddify/hiddifycore/core_interface/core_interface_wrapper_stub.dart'
-    if (dart.library.io) 'package:hiddify/hiddifycore/core_interface/core_interface_wrapper.dart';
+import 'package:hiddify/singbox/model/singbox_config_option.dart';
 import 'package:hiddify/utils/custom_loggers.dart';
 import 'package:hiddify/utils/platform_utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:loggy/loggy.dart' as loggyl;
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rxdart/rxdart.dart';
 
 class HiddifyCoreService with InfraLogger {
@@ -206,7 +200,7 @@ class HiddifyCoreService with InfraLogger {
       loggy.debug("stopping");
       var errMsg = "";
       try {
-        final res = await core.bgClient.stop(Empty());
+        await core.bgClient.stop(Empty());
       } on GrpcError catch (e) {
         if (e.code == StatusCode.unknown && !(e.message?.contains("HTTP/2") ?? false)) {
           errMsg = e.message ?? "failed to stop core: $e";
@@ -297,9 +291,12 @@ class HiddifyCoreService with InfraLogger {
   Stream<List<OutboundGroup>> watchActiveGroups() async* {
     loggy.info("watching active groups");
 
-    if (!core.isInitialized()) {
-      loggy.debug("core is not initialized, returning empty group stream");
-      return;
+    // Wait for core to initialize instead of completing the stream empty.
+    // handleExceptions will re-subscribe on error, so returning an empty
+    // completed stream here would permanently end the proxy list.
+    while (!core.isInitialized()) {
+      loggy.debug("core is not initialized, waiting 500ms");
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
 
     try {
@@ -318,13 +315,20 @@ class HiddifyCoreService with InfraLogger {
   //
   // Stream<SingboxStatus> watchStatus() => _status;
 
-  ResponseStream<SystemInfo> watchStats() {
+  Stream<SystemInfo> watchStats() {
     loggy.debug("watching stats");
-    try {
-      return core.bgClient.getSystemInfoStream(Empty());
-    } catch (e) {
+    return Stream<void>.fromFuture(
+      _waitUntilInitialized(),
+    ).asyncExpand((_) => core.bgClient.getSystemInfoStream(Empty())).handleError((Object e) {
       loggy.error("error watching stats: $e");
-      rethrow;
+      throw e;
+    });
+  }
+
+  Future<void> _waitUntilInitialized() async {
+    while (!core.isInitialized()) {
+      loggy.debug("core is not initialized, waiting 500ms");
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
   }
 
@@ -556,7 +560,6 @@ class HiddifyCoreService with InfraLogger {
       config_log_level.LogLevel.error => LogLevel.ERROR,
       config_log_level.LogLevel.fatal => LogLevel.FATAL,
       config_log_level.LogLevel.panic => LogLevel.FATAL,
-      _ => LogLevel.INFO, // Default case
     };
   }
 
@@ -569,10 +572,14 @@ class HiddifyCoreService with InfraLogger {
       await stopListenSingle("bg");
       try {
         await core.fgClient.close(CloseRequest(mode: SetupMode.GRPC_NORMAL_INSECURE));
-      } catch (e) {}
+      } catch (e) {
+        // only one of the two channel modes is actually open; the other's close() is expected to fail
+      }
       try {
         await core.fgClient.close(CloseRequest(mode: SetupMode.GRPC_NORMAL));
-      } catch (e) {}
+      } catch (e) {
+        // only one of the two channel modes is actually open; the other's close() is expected to fail
+      }
     }
   }
 

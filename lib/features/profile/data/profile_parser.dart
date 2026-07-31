@@ -140,12 +140,10 @@ class ProfileParser {
   Either<ProfileFailure, ProfileEntriesCompanion> offlineUpdate({
     required ProfileEntity profile,
     required String tempFilePath,
-  }) => profile
-      .map(
-        remote: (rp) => parse(profile: rp, tempFilePath: tempFilePath),
-        local: (lp) => parse(tempFilePath: tempFilePath, profile: lp),
-      )
-      .flatMap((profEntity) => Either.tryCatch(() => profEntity.toUpdateEntry(), ProfileFailure.unexpected));
+  }) => switch (profile) {
+    final RemoteProfileEntity rp => parse(profile: rp, tempFilePath: tempFilePath),
+    final LocalProfileEntity lp => parse(tempFilePath: tempFilePath, profile: lp),
+  }.flatMap((profEntity) => Either.tryCatch(() => profEntity.toUpdateEntry(), ProfileFailure.unexpected));
 
   TaskEither<ProfileFailure, Map<String, dynamic>> _downloadProfile(
     String url,
@@ -213,17 +211,21 @@ class ProfileParser {
 
         try {
           final tmpPath = '$tempFilePath.$currentIndex';
+          try {
+            await httpClient.download(
+              line,
+              tmpPath,
+              cancelToken: cancelToken,
+              userAgent: ref.read(ConfigOptions.useXrayCoreWhenPossible)
+                  ? httpClient.userAgent.replaceAll('HiddifyNext', 'HiddifyNextX')
+                  : null,
+            );
 
-          await httpClient.download(
-            line,
-            tmpPath,
-            cancelToken: cancelToken,
-            userAgent: ref.read(ConfigOptions.useXrayCoreWhenPossible)
-                ? httpClient.userAgent.replaceAll('HiddifyNext', 'HiddifyNextX')
-                : null,
-          );
-
-          results[currentIndex] = (await File(tmpPath).readAsString()).trim();
+            results[currentIndex] = (await File(tmpPath).readAsString()).trim();
+          } finally {
+            final tmp = File(tmpPath);
+            if (tmp.existsSync()) tmp.deleteSync();
+          }
         } catch (err) {
           if (err is DioException && CancelToken.isCancel(err)) {
             return;
@@ -236,7 +238,7 @@ class ProfileParser {
     // Start workers
     await Future.wait(List.generate(parallelism, (_) => worker()));
 
-    if (results.any((e) => e != null)) {
+    if (results.every((e) => e != null)) {
       final newContent = results.join("\n");
       await File(tempFilePath).writeAsString(newContent);
     }
@@ -370,10 +372,15 @@ class ProfileParser {
           }
         }
 
-        return profile.map(
-          remote: (rp) => rp.copyWith(name: name, lastUpdate: DateTime.now(), options: options, subInfo: subInfo),
-          local: (lp) => lp.copyWith(name: name, lastUpdate: DateTime.now()),
-        );
+        return switch (profile) {
+          final RemoteProfileEntity rp => rp.copyWith(
+            name: name,
+            lastUpdate: DateTime.now(),
+            options: options,
+            subInfo: subInfo,
+          ),
+          final LocalProfileEntity lp => lp.copyWith(name: name, lastUpdate: DateTime.now()),
+        };
       }, ProfileFailure.unexpected);
 
   static String protocol(String content) {
@@ -395,6 +402,7 @@ class ProfileParser {
         'tuic' => fragment ?? ProxyType.tuic.label,
         'hy2' || 'hysteria2' => fragment ?? ProxyType.hysteria2.label,
         'hy' || 'hysteria' => fragment ?? ProxyType.hysteria.label,
+        'anytls' => fragment ?? ProxyType.anytls.label,
         'ssh' => fragment ?? ProxyType.ssh.label,
         'wg' => fragment ?? ProxyType.wireguard.label,
         'awg' => fragment ?? ProxyType.awg.label,

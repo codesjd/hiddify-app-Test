@@ -2,8 +2,8 @@
 // ignore_for_file: unused_local_variable, unused_import
 import 'package:drift/drift.dart';
 import 'package:drift_dev/api/migrations_native.dart';
-import 'package:hiddify/core/db/db.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hiddify/core/db/db.dart';
 import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
@@ -38,20 +38,33 @@ void main() {
     }
   });
 
-  // The following template shows how to write tests ensuring your migrations
-  // preserve existing data.
-  // Testing this can be useful for migrations that change existing columns
-  // (e.g. by alterating their type or constraints). Migrations that only add
-  // tables or columns typically don't need these advanced tests. For more
-  // information, see https://drift.simonbinder.eu/migrations/tests/#verifying-data-integrity
-  // TODO: This generated template shows how these tests could be written. Adopt
-  // it to your own needs when testing migrations with data integrity.
+  // v1→v2 data-integrity test: verifies that `from1To2` sets type='remote' on every row.
   test('migration from v1 to v2 does not corrupt data', () async {
-    // Add data to insert into the old database, and the expected rows after the
-    // migration.
-    // TODO: Fill these lists
-    final oldProfileEntriesData = <v1.ProfileEntriesData>[];
-    final expectedNewProfileEntriesData = <v2.ProfileEntriesData>[];
+    final oldProfileEntriesData = <v1.ProfileEntriesData>[
+      v1.ProfileEntriesData(
+        id: 'profile-1',
+        active: true,
+        name: 'My Profile',
+        url: 'https://example.com/sub',
+        lastUpdate: DateTime.utc(2024),
+        upload: 100,
+        download: 200,
+        total: 1000,
+      ),
+    ];
+    final expectedNewProfileEntriesData = <v2.ProfileEntriesData>[
+      v2.ProfileEntriesData(
+        id: 'profile-1',
+        type: 'remote',
+        active: true,
+        name: 'My Profile',
+        url: 'https://example.com/sub',
+        lastUpdate: DateTime.utc(2024),
+        upload: 100,
+        download: 200,
+        total: 1000,
+      ),
+    ];
 
     await verifier.testWithDataIntegrity(
       oldVersion: 1,
